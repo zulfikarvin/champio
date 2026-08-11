@@ -18,7 +18,8 @@
     "check:extraction": "tsx scripts/check-extraction.ts",
     "check:pipeline": "tsx scripts/check-pipeline.ts",
     "check:prompt": "tsx scripts/check-prompt.ts",
-    "verify:quizzes": "tsx scripts/verify-quizzes.ts"
+    "verify:quizzes": "tsx scripts/verify-quizzes.ts",
+    "check:compiler": "tsx scripts/check-compiler.ts"
   },
   "dependencies": {
     "@google/genai": "^2.16.0",
