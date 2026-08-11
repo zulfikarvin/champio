@@ -225,10 +225,36 @@ async function buildFixture(label: string): Promise<Fixture> {
   };
 }
 
+/**
+ * Removes the fixtures.
+ *
+ * Errors are reported rather than swallowed. An earlier version ignored them,
+ * which hid a real defect: guard_last_owner blocked the cascade from `teams`, so
+ * every run silently leaked two teams, two users, their guidebooks and their
+ * rubrics into the project. Migration 0007 fixed the trigger; checking the result
+ * here is what stops the next such failure going unnoticed.
+ */
 async function teardown(fixtures: Fixture[]) {
   for (const f of fixtures) {
-    await admin.from("teams").delete().eq("id", f.teamId);
-    await admin.auth.admin.deleteUser(f.userId);
+    const { error: teamError } = await admin.from("teams").delete().eq("id", f.teamId);
+    if (teamError) {
+      console.error(`  ! could not delete team ${f.teamId}: ${teamError.message}`);
+    }
+
+    const { error: userError } = await admin.auth.admin.deleteUser(f.userId);
+    if (userError) {
+      console.error(`  ! could not delete user ${f.email}: ${userError.message}`);
+    }
+  }
+
+  // Prove it actually went, rather than assuming.
+  for (const f of fixtures) {
+    const { data: leftover } = await admin
+      .from("teams")
+      .select("id")
+      .eq("id", f.teamId)
+      .maybeSingle();
+    if (leftover) console.error(`  ! team ${f.teamId} survived teardown`);
   }
 }
 

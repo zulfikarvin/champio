@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createProposalAction } from "@/app/(app)/proposals/actions";
@@ -108,7 +109,11 @@ export function NewProposalForm({ tracks }: { tracks: TrackOption[] }) {
         </div>
         <p className="text-xs text-ink-muted">
           The rubric is fixed once an evaluation runs, so every version is scored
-          the same way.
+          the same way.{" "}
+          <Link href="/rubrics" className="font-semibold text-accent hover:underline">
+            Compile one from your competition&rsquo;s guidebook
+          </Link>{" "}
+          to be scored against the criteria your judges actually use.
         </p>
       </div>
 

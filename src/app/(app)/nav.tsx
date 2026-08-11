@@ -5,6 +5,7 @@ import {
   FileText,
   LayoutDashboard,
   Library,
+  ScrollText,
   Settings,
   ShieldCheck,
 } from "lucide-react";
@@ -23,6 +24,7 @@ const ITEMS: NavItem[] = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { href: "/tracks", labelKey: "nav.tracks", icon: BookOpen },
   { href: "/proposals", labelKey: "nav.proposals", icon: FileText },
+  { href: "/rubrics", labelKey: "nav.rubrics", icon: ScrollText },
   { href: "/library", labelKey: "nav.library", icon: Library },
   { href: "/settings", labelKey: "nav.settings", icon: Settings },
 ];

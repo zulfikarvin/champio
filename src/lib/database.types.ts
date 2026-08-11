@@ -366,6 +366,8 @@ export type Database = {
           status: Database["public"]["Enums"]["guidebook_status"];
           rubric_id: string | null;
           error: string | null;
+          /** Compiled rubric draft awaiting review (migration 0008). */
+          compiled_json: Json | null;
           created_at: string;
         };
         Insert: {
@@ -377,6 +379,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["guidebook_status"];
           rubric_id?: string | null;
           error?: string | null;
+          compiled_json?: Json | null;
           created_at?: string;
         };
         Update: {
@@ -388,6 +391,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["guidebook_status"];
           rubric_id?: string | null;
           error?: string | null;
+          compiled_json?: Json | null;
           created_at?: string;
         };
         Relationships: [

@@ -83,6 +83,53 @@ export type FormatRules = z.infer<typeof formatRulesSchema>;
 export type Rubric = z.infer<typeof rubricSchema>;
 
 /**
+ * What the compiler is allowed to return, before normalisation.
+ *
+ * Deliberately looser than `rubricSchema` on one field: `weight` accepts any
+ * positive number rather than requiring a 0–1 distribution summing to 1.0.
+ *
+ * Real guidebooks state weights as percentages — "Problem analysis 30%, Solution
+ * 25%" — and frequently they do not add up, because a document written for humans
+ * rounds. Demanding a normalised distribution from the model would fail validation
+ * on the common case and burn a retry to fix arithmetic we can do ourselves.
+ *
+ * So the model reports the weights as written, `normaliseWeights()` scales them,
+ * and the result is then validated against the real `rubricSchema`. The preview
+ * screen shows the user what the rescaling did.
+ */
+export const compiledRubricDraftSchema = z.object({
+  rubric_name: z.string().min(1).max(200),
+  criteria: z
+    .array(
+      criterionSchema.extend({
+        weight: z
+          .number()
+          .positive("weight must be greater than zero")
+          .max(1000, "weight looks like a total, not a per-criterion value"),
+      }),
+    )
+    .min(1)
+    .max(20),
+  format_rules: formatRulesSchema.default({ other: [] }),
+});
+
+export type CompiledRubricDraft = z.infer<typeof compiledRubricDraftSchema>;
+
+/**
+ * Turns a compiler draft into a valid rubric: rescales the weights to a
+ * distribution, then validates the whole thing against the real contract.
+ *
+ * Throws if the result still fails — which would mean a problem the compiler
+ * cannot fix by rescaling, such as duplicate criterion keys.
+ */
+export function finaliseDraft(draft: CompiledRubricDraft): Rubric {
+  return rubricSchema.parse({
+    ...draft,
+    criteria: normaliseWeights(draft.criteria),
+  });
+}
+
+/**
  * Normalises weights to sum to exactly 1.0, preserving proportions.
  *
  * The compiler will routinely extract weights from a guidebook that reads

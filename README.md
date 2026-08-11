@@ -22,8 +22,8 @@ Two modules:
 | 1 | Foundation: auth, teams, full schema + RLS, storage isolation, design system, telemetry | **Complete** |
 | 2 | Diagnostic core: PDF upload, extraction, async pipeline, report screen | **Complete** |
 | 3 | Delta view + PPTX support | Not started |
-| 4 | Rubric Compiler (guidebook → rubric) | Not started |
-| 5 | Learning tracks, skill tree, quizzes | Not started |
+| 4 | Rubric Compiler (guidebook → rubric) | **Complete** |
+| 5 | Learning tracks, skill tree, quizzes | **Partial** — Business Plan track only |
 | 6 | Admin telemetry dashboard | Not started |
 
 Phase 1 ships the **complete schema and RLS for every table**, not just the ones
@@ -46,6 +46,10 @@ supabase/migrations/0001_schema.sql        tables, enums, indexes, triggers
 supabase/migrations/0002_rls.sql           helpers, policies, guard triggers
 supabase/migrations/0003_storage.sql       buckets + storage.objects policies
 supabase/migrations/0004_seed_content.sql  3 tracks + 3 default rubrics
+supabase/migrations/0005_evaluation_model.sql     records which model scored
+supabase/migrations/0006_business_plan_track.sql  5 modules + quizzes
+supabase/migrations/0007_fix_last_owner_guard.sql scopes the guard to clients
+supabase/migrations/0008_guidebook_compiled_json.sql  compiler draft column
 ```
 
 Every migration is idempotent (`create or replace`, `drop policy if exists`,
@@ -61,8 +65,11 @@ npm run verify:rubrics  # seeded rubrics still satisfy the Zod contract (no DB n
 npm run seed:demo    # demo team + proposal with two evaluated versions
 npm run smoke        # signed-in end-to-end render check (needs `npm run dev`)
 
-# Phase 2 diagnostics
+npm run verify:quizzes  # seeded quizzes: answer keys match, positions unbiased
+
+# LLM diagnostics
 npm run check:extraction -- path/to.pdf   # what the model will actually be given
+npm run check:prompt     -- path/to.pdf   # evaluate with a real call, no DB writes
 npm run check:pipeline   -- path/to.pdf   # full run incl. a real Gemini call
 ```
 

@@ -17,6 +17,7 @@ const en = {
 
   "nav.tracks": "Learning Tracks",
   "nav.proposals": "Proposals",
+  "nav.rubrics": "Rubrics",
   "nav.library": "Reference Library",
   "nav.dashboard": "Dashboard",
   "nav.settings": "Settings",
