@@ -68,6 +68,31 @@ npm run check:pipeline   -- path/to.pdf   # full run incl. a real Gemini call
 
 ---
 
+## Deploying to Vercel
+
+The build **will fail** until these are set under Project Settings →
+Environment Variables, for Production, Preview and Development:
+
+| Variable | Needed for |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | everything |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | everything |
+| `SUPABASE_SERVICE_ROLE_KEY` | evaluation pipeline, quiz scoring, telemetry |
+| `GEMINI_API_KEY` | evaluations |
+| `CRON_SECRET` | `/api/cron/sweep` (refuses every request without it) |
+
+Optional: `GEMINI_EVAL_MODEL`, `GEMINI_FAST_MODEL` to override the pinned models
+(ADR 9). `SUPABASE_PROJECT_REF` is only used by `npm run db:types` locally and is
+not needed at runtime.
+
+`NEXT_PUBLIC_*` values are **inlined into the client bundle at build time**, so
+adding one after a failed deploy does nothing until you trigger a rebuild. The
+build validates them eagerly and fails with the list of what is missing rather
+than shipping a bundle with `undefined` baked in.
+
+Migrations are not run by the deploy. Apply `supabase/migrations/*.sql` to the
+hosted project first, in order.
+
 ## Architecture decisions
 
 ### ADR 1 — Rubrics are data, not code
