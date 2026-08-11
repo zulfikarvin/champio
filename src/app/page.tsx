@@ -80,7 +80,7 @@ export default function LandingPage() {
           <div className="relative mx-auto max-w-6xl px-5 pb-16 pt-14 sm:px-8 sm:pb-24 sm:pt-20">
             <span className="inline-flex items-center gap-2 rounded-full bg-violet-100 px-4 py-1.5 text-xs font-semibold text-secondary">
               <Trophy className="size-3.5" />
-              For Indonesian student competitors
+              For Indonesian student competition enthusiasts
             </span>
 
             <h1 className="display-xl mt-6 max-w-3xl text-primary">
