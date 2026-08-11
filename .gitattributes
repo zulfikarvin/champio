@@ -1,0 +1,23 @@
+# Normalise line endings in the repository to LF.
+#
+# Development happens on Windows but deployment is Linux (Vercel), and SQL
+# migrations get pasted into a web SQL editor. Without this, every file shows as
+# modified when the repo is opened on a different platform, and diffs become
+# unreadable.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# Generated: collapse in diffs and exclude from language statistics so the
+# repo's language breakdown reflects code that was actually written.
+package-lock.json -diff linguist-generated
+src/lib/database.types.ts linguist-generated

@@ -1,0 +1,34 @@
+name: Sweep stuck evaluations
+
+# Vercel Cron on the Hobby plan is limited to one run per day, which is useless
+# for re-driving a job that died two minutes ago. GitHub Actions cron is free and
+# runs as often as we need, so the schedule lives here and the logic stays in the
+# app (see src/app/api/cron/sweep/route.ts).
+#
+# Required repository secrets:
+#   SWEEP_URL     https://<your-deployment>/api/cron/sweep
+#   CRON_SECRET   same value as the CRON_SECRET env var on Vercel
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub queues rather than guarantees this cadence, which
+    # is fine: the sweeper is a safety net, not the primary trigger.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sweep endpoint
+        run: |
+          response=$(curl -sS -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SWEEP_URL }}")
+          body=$(echo "$response" | head -n -1)
+          code=$(echo "$response" | tail -n 1)
+          echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "Sweep failed with HTTP $code"
+            exit 1
+          fi

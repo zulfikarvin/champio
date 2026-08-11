@@ -1,0 +1,52 @@
+{
+  "name": "champio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "preflight": "tsx scripts/preflight.ts",
+    "smoke": "tsx scripts/smoke-auth.ts",
+    "db:types": "tsx scripts/gen-types.ts",
+    "rls:test": "tsx scripts/rls-test.ts",
+    "verify:rubrics": "tsx scripts/verify-rubrics.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "check:extraction": "tsx scripts/check-extraction.ts",
+    "check:pipeline": "tsx scripts/check-pipeline.ts",
+    "check:prompt": "tsx scripts/check-prompt.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.16.0",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.2",
+    "@tailwindcss/typography": "^0.5.20",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.31.0",
+    "next": "16.3.0",
+    "radix-ui": "^1.6.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.6.0",
+    "unpdf": "^1.8.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.0",
+    "supabase": "^2.113.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  }
+}

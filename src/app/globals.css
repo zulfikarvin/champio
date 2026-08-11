@@ -1,0 +1,93 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Champio design tokens.
+   The purple ramp, type scale and shadow language are taken from the Mark-Up
+   reference build so the two products read as the same family. Dark-on-light by
+   design decision — there is no dark theme yet, and `body` paints an explicit
+   background so nothing is inherited from the host. */
+
+@theme {
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* Brand ramp, darkest to lightest */
+  --color-primary-dark: #10002b;
+  --color-primary: #240046;
+  --color-secondary-dark: #3c096c;
+  --color-secondary: #5a189a;
+  --color-accent: #7b2cbf;
+  --color-accent-light: #9d4edd;
+  --color-violet-300: #c77dff;
+  --color-violet-200: #e0aaff;
+  --color-violet-100: #f8f3ff;
+
+  /* Surfaces and text */
+  --color-canvas: #fafafa;
+  --color-surface: #ffffff;
+  --color-ink: #10002b;
+  --color-ink-muted: #6b6480;
+  --color-hairline: #ece8f2;
+
+  /* Card radii, matching the reference */
+  --radius-card: 16px;
+  --radius-card-lg: 20px;
+  --radius-card-xl: 24px;
+
+  /* Shadows are tinted with the brand purple rather than neutral black —
+     this is most of why the reference cards feel warm instead of grey. */
+  --shadow-card: 0 2px 8px rgba(16, 0, 43, 0.04);
+  --shadow-card-hover: 0 12px 24px -10px rgba(16, 0, 43, 0.12);
+  --shadow-float: 0 4px 20px rgba(16, 0, 43, 0.05);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  /* Brand-coloured focus ring everywhere, so keyboard users get the same
+     visual language as the rest of the UI. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-violet-200);
+    color: var(--color-primary-dark);
+  }
+}
+
+@layer components {
+  /* The one card treatment used across dashboards, tracks and reports. */
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-card-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Display type: 700–800 weight, tight tracking, fluid down to 390px.
+     clamp() rather than breakpoint jumps keeps headlines from breaking
+     awkwardly on the narrow phones most of our users are on. */
+  .display-xl {
+    font-size: clamp(2.25rem, 1.4rem + 3.6vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+  }
+
+  .display-lg {
+    font-size: clamp(1.75rem, 1.2rem + 2.2vw, 3rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+}
