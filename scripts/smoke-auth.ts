@@ -197,6 +197,71 @@ async function main() {
     }
   }
 
+  console.log("\nLearning path");
+  {
+    const tracks = await fetch(`${BASE_URL}/tracks`, { headers: { cookie } });
+    const tracksBody = stripSsrMarkers(await tracks.text());
+    check(
+      "/tracks lists the three tracks",
+      tracks.status === 200 &&
+        ["Business Plan", "Academic Essay", "Business Case"].every((n) =>
+          tracksBody.includes(n),
+        ),
+      `HTTP ${tracks.status}`,
+    );
+
+    const track = await fetch(`${BASE_URL}/tracks/business_plan`, {
+      headers: { cookie },
+    });
+    const trackBody = stripSsrMarkers(await track.text());
+    const moduleTitles = [
+      "Business Model Canvas",
+      "Problem to Idea",
+      "Marketing Analysis",
+      "Financial Projection",
+      "Presentation &amp; Pitching",
+    ];
+    check(
+      "skill tree shows all five modules",
+      track.status === 200 && moduleTitles.every((t) => trackBody.includes(t)),
+      moduleTitles.filter((t) => !trackBody.includes(t)).join(", "),
+    );
+    check(
+      "later modules are gated",
+      trackBody.includes("Pass the previous module"),
+      "no lock message found",
+    );
+
+    const first = await fetch(`${BASE_URL}/tracks/business_plan/1`, {
+      headers: { cookie },
+    });
+    const firstBody = stripSsrMarkers(await first.text());
+    check(
+      "module 1 renders content and quiz",
+      first.status === 200 &&
+        firstBody.includes("Business Model Canvas") &&
+        firstBody.includes("Check your understanding"),
+      `HTTP ${first.status}`,
+    );
+    // The whole point of the column privilege: the answers must not reach the page.
+    check(
+      "module page does not leak answer text",
+      !firstBody.includes("correct_index") && !firstBody.includes("explanation"),
+      "answer key fields found in HTML",
+    );
+
+    // A locked module must redirect server-side, not merely look locked.
+    const locked = await fetch(`${BASE_URL}/tracks/business_plan/4`, {
+      headers: { cookie },
+      redirect: "manual",
+    });
+    check(
+      "deep-linking a locked module redirects",
+      locked.status === 307 || locked.status === 303,
+      `HTTP ${locked.status}`,
+    );
+  }
+
   console.log("\nAdmin is hidden from non-admins");
   {
     const res = await fetch(`${BASE_URL}/admin`, { headers: { cookie }, redirect: "manual" });

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, FileText, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, FileText, Sparkles } from "lucide-react";
+import { listTracks } from "@/lib/learning";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTeam } from "@/lib/teams";
 
@@ -10,14 +11,14 @@ export default async function DashboardPage() {
   const activeTeam = await getActiveTeam();
   const supabase = await createClient();
 
-  // RLS scopes both of these to the caller's teams, so no explicit team filter
-  // is needed for correctness — the .eq() below is for the *active* team only.
-  const [{ count: proposalCount }, { data: tracks }] = await Promise.all([
+  // listTracks() rather than a raw tracks query: it already folds in the caller's
+  // quiz attempts, so these cards show real progress instead of a static blurb.
+  const [{ count: proposalCount }, tracks] = await Promise.all([
     supabase
       .from("proposals")
       .select("id", { count: "exact", head: true })
       .eq("team_id", activeTeam?.teamId ?? ""),
-    supabase.from("tracks").select("id, slug, name, description").order("slug"),
+    listTracks(),
   ]);
 
   return (
@@ -66,18 +67,73 @@ export default async function DashboardPage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-lg font-bold text-primary">Your tracks</h2>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="text-lg font-bold text-primary">Your tracks</h2>
+          <Link
+            href="/tracks"
+            className="text-sm font-semibold text-accent hover:underline"
+          >
+            View all
+          </Link>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-3">
-          {(tracks ?? []).map((track) => (
-            <article key={track.id} className="card p-5">
-              <Sparkles className="mb-2 size-5 text-violet-300" />
-              <h3 className="font-bold text-primary">{track.name}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-                {track.description}
-              </p>
-            </article>
-          ))}
-          {(tracks ?? []).length === 0 ? (
+          {tracks.map((track) => {
+            const done =
+              track.moduleCount > 0 &&
+              track.completedCount === track.moduleCount;
+
+            return (
+              <Link
+                key={track.id}
+                href={`/tracks/${track.slug}`}
+                className="card group flex flex-col p-5 transition-shadow hover:shadow-[0_12px_24px_-10px_rgba(16,0,43,0.12)]"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  {done ? (
+                    <CheckCircle2 className="size-5 text-emerald-600" />
+                  ) : (
+                    <Sparkles className="size-5 text-violet-300" />
+                  )}
+                  {track.moduleCount > 0 ? (
+                    <span className="text-xs font-semibold text-ink-muted">
+                      {track.completedCount}/{track.moduleCount}
+                    </span>
+                  ) : null}
+                </div>
+
+                <h3 className="font-bold text-primary">{track.name}</h3>
+                <p className="mt-1 flex-1 text-sm leading-relaxed text-ink-muted">
+                  {track.description}
+                </p>
+
+                {track.moduleCount === 0 ? (
+                  <span className="mt-4 text-xs font-semibold text-ink-muted">
+                    Content coming soon
+                  </span>
+                ) : (
+                  <>
+                    <div
+                      className="mt-4 h-1.5 overflow-hidden rounded-full bg-canvas"
+                      role="img"
+                      aria-label={`${track.progressPercent}% complete`}
+                    >
+                      <div
+                        className="h-full rounded-full bg-accent transition-all"
+                        style={{ width: `${track.progressPercent}%` }}
+                      />
+                    </div>
+                    <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-accent">
+                      {track.completedCount > 0 ? "Continue" : "Start"}
+                      <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </>
+                )}
+              </Link>
+            );
+          })}
+
+          {tracks.length === 0 ? (
             <p className="text-sm text-ink-muted">
               No tracks yet — run migration 0004 to seed them.
             </p>
