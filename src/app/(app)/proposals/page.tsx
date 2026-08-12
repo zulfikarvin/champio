@@ -14,15 +14,15 @@ export default async function ProposalsPage() {
     <div className="mx-auto w-full max-w-4xl">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="display-lg text-primary">Proposals</h1>
+          <h1 className="display-lg text-primary">Competitions</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Upload a draft, get a rubric-aligned diagnosis, iterate.
+            Each competition holds one guidebook and every version of your entry.
           </p>
         </div>
         <Link href="/proposals/new">
           <Button size="sm">
             <Plus />
-            New proposal
+            New competition
           </Button>
         </Link>
       </header>
@@ -33,16 +33,17 @@ export default async function ProposalsPage() {
             <FileText className="size-6 text-accent" />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-primary">No proposals yet</h2>
+            <h2 className="text-lg font-bold text-primary">No competitions yet</h2>
             <p className="mt-1 max-w-md text-sm text-ink-muted">
-              Create one, upload your draft as a PDF, and you&rsquo;ll get scored
-              feedback against the rubric your competition uses.
+              Add a competition, upload its guidebook so Champio scores against
+              the real judging criteria, then upload your drafts version by
+              version.
             </p>
           </div>
           <Link href="/proposals/new">
             <Button>
               <Plus />
-              Create your first proposal
+              Add your first competition
             </Button>
           </Link>
         </div>
@@ -59,7 +60,11 @@ export default async function ProposalsPage() {
                     {proposal.title}
                   </h2>
                   <p className="mt-1 truncate text-xs text-ink-muted">
-                    {proposal.trackName} · {proposal.rubricName} ·{" "}
+                    {proposal.trackName} ·{" "}
+                    {proposal.rubricIsDefault
+                      ? "built-in rubric"
+                      : proposal.rubricName}{" "}
+                    ·{" "}
                     {proposal.versionCount === 0
                       ? "no versions"
                       : `${proposal.versionCount} version${proposal.versionCount === 1 ? "" : "s"}`}

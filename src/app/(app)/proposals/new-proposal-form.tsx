@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createProposalAction } from "@/app/(app)/proposals/actions";
@@ -12,18 +11,27 @@ import { cn } from "@/lib/cn";
 export type TrackOption = {
   id: string;
   name: string;
-  rubrics: { id: string; name: string; isDefault: boolean }[];
+  /** The built-in rubric for this track — the starting point before a guidebook. */
+  defaultRubricId: string | null;
 };
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-      {pending ? "Creating…" : "Create proposal"}
+      {pending ? "Creating…" : "Create competition"}
     </Button>
   );
 }
 
+/**
+ * Creating a competition entry.
+ *
+ * Only a title and a format. The rubric is not chosen here: it starts as the
+ * track's built-in default and is replaced by uploading the competition's
+ * guidebook on the entry itself. Picking a rubric before you have a competition
+ * to attach it to was the wrong order — the guidebook is what defines the rubric.
+ */
 export function NewProposalForm({ tracks }: { tracks: TrackOption[] }) {
   const [state, formAction] = useActionState(
     createProposalAction,
@@ -31,42 +39,39 @@ export function NewProposalForm({ tracks }: { tracks: TrackOption[] }) {
   );
 
   const [trackId, setTrackId] = useState(tracks[0]?.id ?? "");
-  const selectedTrack = tracks.find((t) => t.id === trackId) ?? tracks[0];
-  const rubrics = selectedTrack?.rubrics ?? [];
-
-  // Default to the built-in rubric; a team rubric is an explicit choice.
-  const [rubricId, setRubricId] = useState(
-    rubrics.find((r) => r.isDefault)?.id ?? rubrics[0]?.id ?? "",
-  );
-
-  function selectTrack(id: string) {
-    setTrackId(id);
-    const next = tracks.find((t) => t.id === id)?.rubrics ?? [];
-    setRubricId(next.find((r) => r.isDefault)?.id ?? next[0]?.id ?? "");
-  }
+  const selected = tracks.find((t) => t.id === trackId) ?? tracks[0];
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
-      <Field label="Proposal title" htmlFor="title">
+      <Field
+        label="Competition name"
+        htmlFor="title"
+        hint="However you refer to it — the organiser's name works well."
+      >
         <Input
           id="title"
           name="title"
           required
           minLength={3}
-          placeholder="Reviving Warung Retail — ISAC 2026"
+          placeholder="ISAC 2026 — Business Case"
         />
       </Field>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="track-essay">Competition format</Label>
+        <Label htmlFor={`track-${trackId}`}>Competition format</Label>
         <input type="hidden" name="trackId" value={trackId} />
+        <input
+          type="hidden"
+          name="rubricId"
+          value={selected?.defaultRubricId ?? ""}
+        />
         <div className="grid gap-2 sm:grid-cols-3">
           {tracks.map((track) => (
             <button
               key={track.id}
               id={`track-${track.id}`}
               type="button"
-              onClick={() => selectTrack(track.id)}
+              onClick={() => setTrackId(track.id)}
               aria-pressed={track.id === trackId}
               className={cn(
                 "rounded-[12px] border p-3 text-left text-sm transition-colors",
@@ -79,41 +84,10 @@ export function NewProposalForm({ tracks }: { tracks: TrackOption[] }) {
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="rubricId">Rubric</Label>
-        <input type="hidden" name="rubricId" value={rubricId} />
-        <div className="flex flex-col gap-2">
-          {rubrics.map((rubric) => (
-            <button
-              key={rubric.id}
-              type="button"
-              onClick={() => setRubricId(rubric.id)}
-              aria-pressed={rubric.id === rubricId}
-              className={cn(
-                "flex items-center justify-between gap-2 rounded-[12px] border px-3 py-2.5 text-left text-sm transition-colors",
-                rubric.id === rubricId
-                  ? "border-accent bg-violet-100 font-semibold text-primary"
-                  : "border-hairline bg-surface text-ink-muted hover:border-accent-light",
-              )}
-            >
-              <span className="truncate">{rubric.name}</span>
-              {rubric.isDefault ? (
-                <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-secondary">
-                  Built-in
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
         <p className="text-xs text-ink-muted">
-          The rubric is fixed once an evaluation runs, so every version is scored
-          the same way.{" "}
-          <Link href="/rubrics" className="font-semibold text-accent hover:underline">
-            Compile one from your competition&rsquo;s guidebook
-          </Link>{" "}
-          to be scored against the criteria your judges actually use.
+          Scoring starts with Champio&rsquo;s built-in rubric for this format.
+          Upload the competition&rsquo;s guidebook afterwards and the real judging
+          criteria replace it.
         </p>
       </div>
 

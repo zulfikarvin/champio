@@ -57,7 +57,7 @@ export default async function DashboardPage() {
           <BookOpen className="mb-3 size-6 text-accent" />
           <h2 className="text-lg font-bold text-primary">Build the skills</h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Work through a track, one module and quiz at a time.
+            Read the articles, then test yourself when you want to.
           </p>
           <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent">
             Open tracks
@@ -80,8 +80,7 @@ export default async function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {tracks.map((track) => {
             const done =
-              track.moduleCount > 0 &&
-              track.completedCount === track.moduleCount;
+              track.quizCount > 0 && track.passedCount === track.quizCount;
 
             return (
               <Link
@@ -95,9 +94,9 @@ export default async function DashboardPage() {
                   ) : (
                     <Sparkles className="size-5 text-violet-300" />
                   )}
-                  {track.moduleCount > 0 ? (
+                  {track.quizCount > 0 ? (
                     <span className="text-xs font-semibold text-ink-muted">
-                      {track.completedCount}/{track.moduleCount}
+                      {track.passedCount}/{track.quizCount}
                     </span>
                   ) : null}
                 </div>
@@ -124,7 +123,7 @@ export default async function DashboardPage() {
                       />
                     </div>
                     <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-accent">
-                      {track.completedCount > 0 ? "Continue" : "Start"}
+                      {track.passedCount > 0 ? "Continue" : "Open"}
                       <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                     </span>
                   </>

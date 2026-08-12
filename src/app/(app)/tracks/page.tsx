@@ -13,15 +13,15 @@ export default async function TracksPage() {
       <header className="mb-8">
         <h1 className="display-lg text-primary">Learning Tracks</h1>
         <p className="mt-2 text-sm text-ink-muted">
-          Work through a track module by module. Each quiz unlocks the next step.
+          Read the articles in any order. Quizzes are a separate, optional self-check.
         </p>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {tracks.map((track) => {
-          const started = track.completedCount > 0;
+          const started = track.passedCount > 0;
           const done =
-            track.moduleCount > 0 && track.completedCount === track.moduleCount;
+            track.quizCount > 0 && track.passedCount === track.quizCount;
 
           return (
             <Link
@@ -37,9 +37,9 @@ export default async function TracksPage() {
                     <BookOpen className="size-5 text-accent" />
                   )}
                 </span>
-                {track.moduleCount > 0 ? (
+                {track.quizCount > 0 ? (
                   <span className="text-xs font-semibold text-ink-muted">
-                    {track.completedCount}/{track.moduleCount}
+                    {track.passedCount}/{track.quizCount} quizzes
                   </span>
                 ) : null}
               </div>
@@ -66,7 +66,7 @@ export default async function TracksPage() {
                     />
                   </div>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-accent">
-                    {started ? "Continue" : "Start track"}
+                    {started ? "Continue" : "Open track"}
                     <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                   </span>
                 </>

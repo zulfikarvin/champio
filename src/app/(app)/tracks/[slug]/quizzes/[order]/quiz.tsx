@@ -9,24 +9,31 @@ import { cn } from "@/lib/cn";
 import type { QuizQuestion, QuizResult } from "@/lib/schemas/quiz";
 
 /**
- * Module quiz.
+ * A self-check quiz.
  *
  * The component never sees the answers. It posts the selected option indices and
  * receives a graded result — the key itself is unreadable from the browser by
  * column privilege, so there is nothing here to inspect in the network tab.
+ *
+ * Passing unlocks nothing. Quizzes were originally a gate on the next article;
+ * that made reference material something you had to earn, which is the wrong
+ * shape for content a team consults mid-competition. A failed attempt now costs
+ * nothing but the retake.
  */
 export function Quiz({
   quizId,
   questions,
   passThreshold,
   alreadyPassed,
-  nextHref,
+  bestScore,
+  quizzesHref,
 }: {
   quizId: string;
   questions: QuizQuestion[];
   passThreshold: number;
   alreadyPassed: boolean;
-  nextHref: string | null;
+  bestScore: number | null;
+  quizzesHref: string;
 }) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -73,6 +80,7 @@ export function Quiz({
         <p className="mt-1 text-sm text-ink-muted">
           {questions.length} questions · {passThreshold}% to pass
           {alreadyPassed && !result ? " · already passed" : ""}
+          {bestScore !== null && !result ? ` · best ${bestScore}%` : ""}
         </p>
       </header>
 
@@ -183,8 +191,8 @@ export function Quiz({
               )}
             >
               {result.passed
-                ? "Passed — the next module is unlocked."
-                : `You need ${passThreshold}% to unlock the next module. Read the explanations and try again.`}
+                ? "Passed. Read the explanations below — they are the useful part."
+                : `${passThreshold}% is a pass. Read the explanations below and try again whenever you like.`}
             </p>
           </div>
 
@@ -193,11 +201,9 @@ export function Quiz({
               <RotateCcw />
               Try again
             </Button>
-            {result.passed && nextHref ? (
-              <Button type="button" onClick={() => router.push(nextHref)}>
-                Next module
-              </Button>
-            ) : null}
+            <Button type="button" onClick={() => router.push(quizzesHref)}>
+              Back to all quizzes
+            </Button>
           </div>
         </div>
       ) : (

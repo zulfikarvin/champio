@@ -4,12 +4,12 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
-import { recordGuidebookAction } from "@/app/(app)/rubrics/actions";
+import { attachGuidebookAction } from "@/app/(app)/proposals/guidebook-actions";
 import { Button } from "@/components/ui/button";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 
 /**
- * Uploads a competition guidebook.
+ * Uploads this competition's guidebook.
  *
  * Same pattern as the proposal upload: browser → Supabase Storage directly, so a
  * large PDF never has to fit inside a serverless request body, and the bucket's
@@ -19,7 +19,13 @@ import { createBrowserSupabase } from "@/lib/supabase/browser";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 
-export function UploadGuidebook({ teamId }: { teamId: string }) {
+export function UploadGuidebook({
+  proposalId,
+  teamId,
+}: {
+  proposalId: string;
+  teamId: string;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -52,7 +58,8 @@ export function UploadGuidebook({ teamId }: { teamId: string }) {
         return;
       }
 
-      const result = await recordGuidebookAction({
+      const result = await attachGuidebookAction({
+        proposalId,
         guidebookId,
         filePath,
         fileName: file.name,
@@ -67,7 +74,7 @@ export function UploadGuidebook({ teamId }: { teamId: string }) {
       }
 
       toast.success("Uploaded. Reading the guidebook…");
-      startTransition(() => router.push(`/rubrics/${guidebookId}`));
+      startTransition(() => router.refresh());
     } catch (cause) {
       toast.error(
         `Upload failed: ${cause instanceof Error ? cause.message : String(cause)}`,

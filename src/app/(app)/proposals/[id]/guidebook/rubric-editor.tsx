@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Save, Scale } from "lucide-react";
 import { toast } from "sonner";
-import { saveCompiledRubricAction } from "@/app/(app)/rubrics/actions";
+import { saveProposalRubricAction } from "@/app/(app)/proposals/guidebook-actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
@@ -90,13 +90,12 @@ export function RubricEditor({
         format_rules: draft.format_rules,
       };
 
-      const result = await saveCompiledRubricAction(guidebookId, payload);
+      const result = await saveProposalRubricAction(guidebookId, payload);
       if (result.status === "error") {
         toast.error(result.message);
         return;
       }
-      toast.success("Rubric saved. It is now available when creating a proposal.");
-      router.push("/rubrics");
+      toast.success("Rubric saved. Versions of this competition will be scored against it.");
       router.refresh();
     });
   }
@@ -112,7 +111,7 @@ export function RubricEditor({
           className="mt-1.5"
         />
         <p className="mt-1.5 text-xs text-ink-muted">
-          This is what you will pick from when creating a proposal.
+          Shown on the evaluation report for every version of this competition.
         </p>
       </div>
 

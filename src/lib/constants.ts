@@ -6,7 +6,6 @@ export const ACTIVE_TEAM_COOKIE = "champio_team";
 export const PROTECTED_PREFIXES = [
   "/dashboard",
   "/proposals",
-  "/rubrics",
   "/tracks",
   "/library",
   "/settings",

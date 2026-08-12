@@ -118,9 +118,9 @@ async function main() {
     // list query, the RLS-scoped read and the score rollup all work together.
     {
       path: "/proposals",
-      must: ["Proposals", "Reviving Warung Retail", "76.5", "New proposal"],
+      must: ["Competitions", "Reviving Warung Retail", "76.5", "New competition"],
     },
-    { path: "/proposals/new", must: ["New proposal", "Business Case", "Rubric"] },
+    { path: "/proposals/new", must: ["New competition", "Business Case"] },
     { path: "/tracks", must: ["Learning Tracks"] },
   ];
 
@@ -146,13 +146,19 @@ async function main() {
 
   console.log("\nProposal detail and report");
   {
-    // Follow the seeded proposal through to its v2 report, so the deep routes are
-    // covered rather than just the list.
+    // Follow the *seeded* proposal through to its v2 report, so the deep routes
+    // are covered rather than just the list.
+    //
+    // Located by its title rather than by taking the first link: a real user's
+    // own competitions also appear here, sort newer, and would otherwise be
+    // picked instead — which is exactly what happened once and made this check
+    // fail for a reason that had nothing to do with the code under test.
     const listRes = await fetch(`${BASE_URL}/proposals`, { headers: { cookie } });
     const listBody = stripSsrMarkers(await listRes.text());
-    const proposalId = listBody.match(
-      /\/proposals\/([0-9a-f-]{36})"/,
-    )?.[1];
+    const seededCard = listBody.split("<li").find((chunk) =>
+      chunk.includes("Reviving Warung Retail"),
+    );
+    const proposalId = seededCard?.match(/\/proposals\/([0-9a-f-]{36})"/)?.[1];
 
     if (!proposalId) {
       check("found seeded proposal link", false, "no proposal href in the list");
@@ -167,7 +173,8 @@ async function main() {
         "proposal detail shows the version timeline",
         detail.status === 200 &&
           detailBody.includes("v2") &&
-          detailBody.includes("View report"),
+          detailBody.includes("View report") &&
+          detailBody.includes("Judging criteria"),
         `HTTP ${detail.status}`,
       );
       check(
@@ -227,9 +234,14 @@ async function main() {
       moduleTitles.filter((t) => !trackBody.includes(t)).join(", "),
     );
     check(
-      "later modules are gated",
-      trackBody.includes("Pass the previous module"),
-      "no lock message found",
+      "articles are not gated",
+      !trackBody.includes("Pass the previous"),
+      "a lock message is still present",
+    );
+    check(
+      "Test my Knowledge box is present",
+      trackBody.includes("Test my Knowledge!"),
+      "quiz box missing from the track page",
     );
 
     const first = await fetch(`${BASE_URL}/tracks/business_plan/1`, {
@@ -237,10 +249,10 @@ async function main() {
     });
     const firstBody = stripSsrMarkers(await first.text());
     check(
-      "module 1 renders content and quiz",
+      "article 1 renders content without an inline quiz",
       first.status === 200 &&
         firstBody.includes("Business Model Canvas") &&
-        firstBody.includes("Check your understanding"),
+        !firstBody.includes("Check your understanding"),
       `HTTP ${first.status}`,
     );
     // The whole point of the column privilege: the answers must not reach the page.
@@ -250,15 +262,40 @@ async function main() {
       "answer key fields found in HTML",
     );
 
-    // A locked module must redirect server-side, not merely look locked.
-    const locked = await fetch(`${BASE_URL}/tracks/business_plan/4`, {
+    // Every article is reachable directly now — nothing is gated.
+    const deep = await fetch(`${BASE_URL}/tracks/business_plan/4`, {
       headers: { cookie },
       redirect: "manual",
     });
     check(
-      "deep-linking a locked module redirects",
-      locked.status === 307 || locked.status === 303,
-      `HTTP ${locked.status}`,
+      "article 4 opens directly (no gate)",
+      deep.status === 200,
+      `HTTP ${deep.status}`,
+    );
+
+    const hub = await fetch(`${BASE_URL}/tracks/business_plan/quizzes`, {
+      headers: { cookie },
+    });
+    const hubBody = stripSsrMarkers(await hub.text());
+    check(
+      "quiz hub lists all five quizzes",
+      hub.status === 200 &&
+        ["Business Model Canvas", "Financial Projection"].every((t) =>
+          hubBody.includes(t),
+        ),
+      `HTTP ${hub.status}`,
+    );
+
+    const oneQuiz = await fetch(`${BASE_URL}/tracks/business_plan/quizzes/1`, {
+      headers: { cookie },
+    });
+    const quizBody = stripSsrMarkers(await oneQuiz.text());
+    check(
+      "a quiz renders and leaks no answers",
+      oneQuiz.status === 200 &&
+        quizBody.includes("Check your understanding") &&
+        !quizBody.includes("correct_index"),
+      `HTTP ${oneQuiz.status}`,
     );
   }
 

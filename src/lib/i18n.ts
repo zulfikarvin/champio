@@ -16,8 +16,7 @@ const en = {
   "app.tagline": "Empowering the Next Generation of Champions",
 
   "nav.tracks": "Learning Tracks",
-  "nav.proposals": "Proposals",
-  "nav.rubrics": "Rubrics",
+  "nav.proposals": "Competitions",
   "nav.library": "Reference Library",
   "nav.dashboard": "Dashboard",
   "nav.settings": "Settings",

@@ -4,78 +4,42 @@ import { createClient } from "@/lib/supabase/server";
 import type { GuidebookStatus } from "@/lib/db";
 import { rubricSchema, type Rubric } from "@/lib/schemas/rubric";
 
-/** Reads for the Rubric Compiler. RLS scopes everything to the caller's teams. */
+/**
+ * Guidebook reads.
+ *
+ * A guidebook belongs to a proposal (migration 0009) — a competition has one set
+ * of judging criteria, and the rubric a version is scored against comes from that
+ * competition's guidebook. RLS scopes everything to the caller's teams.
+ */
 
-export type GuidebookSummary = {
+export type ProposalGuidebook = {
   id: string;
   fileName: string | null;
   status: GuidebookStatus;
   error: string | null;
   createdAt: string;
-  /** Set once the user has reviewed and saved the compiled draft. */
+  /** Set once the user has reviewed the compiled draft and saved it. */
   savedRubricId: string | null;
-  savedRubricName: string | null;
-  /** True when a draft is waiting for review. */
-  awaitingReview: boolean;
-  criteriaCount: number | null;
-};
-
-export async function listGuidebooks(): Promise<GuidebookSummary[]> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("guidebooks")
-    .select("id, file_name, status, error, created_at, rubric_id, compiled_json, rubrics(name)")
-    .order("created_at", { ascending: false });
-
-  if (error) throw new Error(`failed to list guidebooks: ${error.message}`);
-
-  return (data ?? []).map((row) => {
-    // Parsed leniently for the list: a draft that fails validation should show as
-    // needing attention, not crash the page listing every other guidebook.
-    const parsed = row.compiled_json
-      ? rubricSchema.safeParse(row.compiled_json)
-      : null;
-
-    return {
-      id: row.id,
-      fileName: row.file_name,
-      status: row.status,
-      error: row.error,
-      createdAt: row.created_at,
-      savedRubricId: row.rubric_id,
-      savedRubricName: row.rubrics?.name ?? null,
-      awaitingReview: row.status === "complete" && !row.rubric_id,
-      criteriaCount: parsed?.success ? parsed.data.criteria.length : null,
-    };
-  });
-}
-
-export type GuidebookDetail = {
-  id: string;
-  teamId: string;
-  fileName: string | null;
-  status: GuidebookStatus;
-  error: string | null;
-  createdAt: string;
-  savedRubricId: string | null;
-  /** The compiled draft, if compilation finished and it validates. */
+  /** The compiled draft, when compilation finished and it validates. */
   draft: Rubric | null;
   /** Present when a draft exists but no longer satisfies the rubric contract. */
   draftError: string | null;
 };
 
-export async function getGuidebook(id: string): Promise<GuidebookDetail | null> {
+/** The single guidebook attached to a proposal, if there is one. */
+export async function getProposalGuidebook(
+  proposalId: string,
+): Promise<ProposalGuidebook | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("guidebooks")
-    .select("id, team_id, file_name, status, error, created_at, rubric_id, compiled_json")
-    .eq("id", id)
+    .select("id, file_name, status, error, created_at, rubric_id, compiled_json")
+    .eq("proposal_id", proposalId)
     .maybeSingle();
 
   if (error) throw new Error(`failed to load guidebook: ${error.message}`);
-  if (!data) return null; // absent, or RLS filtered it — same answer either way
+  if (!data) return null;
 
   let draft: Rubric | null = null;
   let draftError: string | null = null;
@@ -88,7 +52,6 @@ export async function getGuidebook(id: string): Promise<GuidebookDetail | null> 
 
   return {
     id: data.id,
-    teamId: data.team_id,
     fileName: data.file_name,
     status: data.status,
     error: data.error,
@@ -99,26 +62,17 @@ export async function getGuidebook(id: string): Promise<GuidebookDetail | null> 
   };
 }
 
-/** Team-scoped rubrics, for the list screen. */
-export async function listTeamRubrics() {
+/** Looks up which proposal a guidebook belongs to, for redirects after an action. */
+export async function getGuidebookProposalId(
+  guidebookId: string,
+): Promise<string | null> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("rubrics")
-    .select("id, name, created_at, schema_json, tracks(name)")
-    .not("team_id", "is", null)
-    .order("created_at", { ascending: false });
+  const { data } = await supabase
+    .from("guidebooks")
+    .select("proposal_id")
+    .eq("id", guidebookId)
+    .maybeSingle();
 
-  if (error) throw new Error(`failed to list rubrics: ${error.message}`);
-
-  return (data ?? []).map((row) => {
-    const parsed = rubricSchema.safeParse(row.schema_json);
-    return {
-      id: row.id,
-      name: row.name,
-      trackName: row.tracks?.name ?? "—",
-      createdAt: row.created_at,
-      criteriaCount: parsed.success ? parsed.data.criteria.length : 0,
-    };
-  });
+  return data?.proposal_id ?? null;
 }

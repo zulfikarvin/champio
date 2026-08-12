@@ -368,6 +368,8 @@ export type Database = {
           error: string | null;
           /** Compiled rubric draft awaiting review (migration 0008). */
           compiled_json: Json | null;
+          /** The competition entry this guidebook governs (migration 0009). */
+          proposal_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -380,6 +382,7 @@ export type Database = {
           rubric_id?: string | null;
           error?: string | null;
           compiled_json?: Json | null;
+          proposal_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -392,9 +395,17 @@ export type Database = {
           rubric_id?: string | null;
           error?: string | null;
           compiled_json?: Json | null;
+          proposal_id?: string | null;
           created_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "guidebooks_proposal_id_fkey";
+            columns: ["proposal_id"];
+            isOneToOne: true;
+            referencedRelation: "proposals";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "guidebooks_rubric_id_fkey";
             columns: ["rubric_id"];

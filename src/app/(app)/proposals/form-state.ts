@@ -10,3 +10,13 @@ export type EnqueueState =
   | { status: "idle" }
   | { status: "error"; message: string }
   | { status: "queued"; evaluationId: string };
+
+export type UploadState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "queued"; guidebookId: string };
+
+export type SaveRubricState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "saved"; rubricId: string };

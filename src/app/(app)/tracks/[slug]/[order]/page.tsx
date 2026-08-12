@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowLeft, CheckCircle2, Clock } from "lucide-react";
-import { Quiz } from "@/app/(app)/tracks/[slug]/[order]/quiz";
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock, Target } from "lucide-react";
 import { isDiagramBlock, renderDiagram } from "@/components/diagrams";
 import { getModule } from "@/lib/learning";
 
-export const metadata: Metadata = { title: "Module" };
+export const metadata: Metadata = { title: "Article" };
 
 export default async function ModulePage({
   params,
@@ -20,10 +19,6 @@ export default async function ModulePage({
 
   const lesson = await getModule(slug, orderIndex);
   if (!lesson) notFound();
-
-  // The gate is enforced here, not only in the UI. Linking directly to a locked
-  // module should not be a way around the quiz.
-  if (!lesson.unlocked) redirect(`/tracks/${slug}`);
 
   return (
     <div className="mx-auto w-full max-w-2xl">
@@ -37,7 +32,7 @@ export default async function ModulePage({
 
       <header className="mb-8">
         <p className="text-sm font-semibold text-accent">
-          Module {lesson.orderIndex}
+          Article {lesson.orderIndex}
         </p>
         <h1 className="display-lg mt-1 text-primary">{lesson.title}</h1>
 
@@ -46,10 +41,10 @@ export default async function ModulePage({
             <Clock className="size-3.5" />
             {lesson.estMinutes} min read
           </span>
-          {lesson.completed ? (
+          {lesson.quizPassed ? (
             <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
               <CheckCircle2 className="size-3.5" />
-              Completed{lesson.bestScore !== null ? ` · ${lesson.bestScore}%` : ""}
+              Quiz passed
             </span>
           ) : null}
           {lesson.isDraft ? (
@@ -61,7 +56,7 @@ export default async function ModulePage({
       </header>
 
       {/* `prose` comes from @tailwindcss/typography. The overrides align it with
-          the brand tokens — table styling matters here because several modules
+          the brand tokens — table styling matters here because several articles
           teach through comparison tables. */}
       <article
         className="prose prose-sm max-w-none
@@ -136,25 +131,50 @@ export default async function ModulePage({
         </Markdown>
       </article>
 
-      {lesson.quiz ? (
-        <Quiz
-          quizId={lesson.quiz.id}
-          questions={lesson.quiz.questions}
-          passThreshold={lesson.quiz.passThreshold}
-          alreadyPassed={lesson.completed}
-          nextHref={
-            lesson.nextOrderIndex
-              ? `/tracks/${slug}/${lesson.nextOrderIndex}`
-              : null
-          }
-        />
-      ) : (
-        <div className="card mt-10 p-6">
-          <p className="text-sm text-ink-muted">
-            This module has no quiz yet.
-          </p>
-        </div>
-      )}
+      {/* Optional self-check, offered rather than imposed. */}
+      {lesson.hasQuiz ? (
+        <Link
+          href={`/tracks/${slug}/quizzes/${lesson.orderIndex}`}
+          className="mt-10 flex items-center gap-4 rounded-[16px] bg-violet-100 p-5 transition-colors hover:bg-violet-200/60"
+        >
+          <Target className="size-5 shrink-0 text-accent" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-primary">
+              {lesson.quizPassed ? "Retake this quiz" : "Test yourself on this"}
+            </p>
+            <p className="mt-0.5 text-sm text-secondary-dark">
+              A few questions on what you just read.
+            </p>
+          </div>
+          <ArrowRight className="size-4 shrink-0 text-accent" />
+        </Link>
+      ) : null}
+
+      <nav className="mt-10 flex items-center justify-between gap-4 border-t border-hairline pt-6">
+        {lesson.previousOrderIndex ? (
+          <Link
+            href={`/tracks/${slug}/${lesson.previousOrderIndex}`}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-muted transition-colors hover:text-accent"
+          >
+            <ArrowLeft className="size-4" />
+            Previous
+          </Link>
+        ) : (
+          <span />
+        )}
+
+        {lesson.nextOrderIndex ? (
+          <Link
+            href={`/tracks/${slug}/${lesson.nextOrderIndex}`}
+            className="inline-flex min-w-0 items-center gap-1.5 text-right text-sm font-semibold text-accent hover:underline"
+          >
+            <span className="truncate">{lesson.nextTitle}</span>
+            <ArrowRight className="size-4 shrink-0" />
+          </Link>
+        ) : (
+          <span />
+        )}
+      </nav>
     </div>
   );
 }

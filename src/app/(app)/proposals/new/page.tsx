@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { NewProposalForm } from "@/app/(app)/proposals/new-proposal-form";
 import { listTracksWithRubrics } from "@/lib/proposals";
 
-export const metadata: Metadata = { title: "New proposal" };
+export const metadata: Metadata = { title: "New competition" };
 
 export default async function NewProposalPage() {
   const tracks = await listTracksWithRubrics();
@@ -16,13 +16,13 @@ export default async function NewProposalPage() {
         className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-ink-muted transition-colors hover:text-accent"
       >
         <ArrowLeft className="size-4" />
-        Proposals
+        Competitions
       </Link>
 
-      <h1 className="display-lg mb-1 text-primary">New proposal</h1>
+      <h1 className="display-lg mb-1 text-primary">New competition</h1>
       <p className="mb-8 text-sm text-ink-muted">
-        Pick the format you are competing in. You can upload versions once it
-        exists.
+        Pick the format you are competing in. Once it exists you can upload the
+        guidebook and your draft versions.
       </p>
 
       <div className="card p-6">

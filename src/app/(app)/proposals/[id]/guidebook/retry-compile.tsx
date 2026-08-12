@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { recompileAction } from "@/app/(app)/rubrics/actions";
+import { recompileGuidebookAction } from "@/app/(app)/proposals/guidebook-actions";
 import { Button } from "@/components/ui/button";
 
 export function RetryCompile({ guidebookId }: { guidebookId: string }) {
@@ -19,7 +19,7 @@ export function RetryCompile({ guidebookId }: { guidebookId: string }) {
       disabled={pending}
       onClick={() => {
         startTransition(async () => {
-          const result = await recompileAction(guidebookId);
+          const result = await recompileGuidebookAction(guidebookId);
           if (result.status === "error") toast.error(result.message);
           else {
             toast.success("Reading the guidebook again…");
