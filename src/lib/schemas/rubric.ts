@@ -83,22 +83,44 @@ export type FormatRules = z.infer<typeof formatRulesSchema>;
 export type Rubric = z.infer<typeof rubricSchema>;
 
 /**
- * What the compiler is allowed to return, before normalisation.
+ * Which assessment a rubric scores.
+ *
+ * A guidebook usually defines several: the written proposal is judged on content,
+ * the pitch on delivery. Merging them produces criteria that cannot apply — a
+ * document scored on "Penampilan dan Komunikasi" — and halves every real weight.
+ */
+export const RUBRIC_STAGES = [
+  "proposal",
+  "presentation",
+  "prototype",
+  "other",
+] as const;
+
+export const rubricStageSchema = z.enum(RUBRIC_STAGES);
+export type RubricStage = z.infer<typeof rubricStageSchema>;
+
+export const STAGE_LABELS: Record<RubricStage, string> = {
+  proposal: "Proposal",
+  presentation: "Presentation",
+  prototype: "Prototype",
+  other: "Other",
+};
+
+/**
+ * One assessment table as the compiler read it, before normalisation.
  *
  * Deliberately looser than `rubricSchema` on one field: `weight` accepts any
  * positive number rather than requiring a 0–1 distribution summing to 1.0.
  *
- * Real guidebooks state weights as percentages — "Problem analysis 30%, Solution
- * 25%" — and frequently they do not add up, because a document written for humans
- * rounds. Demanding a normalised distribution from the model would fail validation
- * on the common case and burn a retry to fix arithmetic we can do ourselves.
- *
- * So the model reports the weights as written, `normaliseWeights()` scales them,
- * and the result is then validated against the real `rubricSchema`. The preview
- * screen shows the user what the rescaling did.
+ * Real guidebooks state weights as percentages — "Kreativitas 30%" — and
+ * frequently they do not add up, because a document written for humans rounds.
+ * Demanding a normalised distribution from the model would fail validation on the
+ * common case and burn a retry to fix arithmetic we can do ourselves.
  */
-export const compiledRubricDraftSchema = z.object({
-  rubric_name: z.string().min(1).max(200),
+export const compiledSectionSchema = z.object({
+  stage: rubricStageSchema,
+  /** The heading as the guidebook writes it, e.g. "Penilaian Proposal". */
+  section_name: z.string().min(1).max(200),
   criteria: z
     .array(
       criterionSchema.extend({
@@ -113,20 +135,67 @@ export const compiledRubricDraftSchema = z.object({
   format_rules: formatRulesSchema.default({ other: [] }),
 });
 
-export type CompiledRubricDraft = z.infer<typeof compiledRubricDraftSchema>;
+/**
+ * The whole compiler output: a competition, and one section per assessment the
+ * guidebook defines.
+ */
+export const compiledGuidebookSchema = z
+  .object({
+    competition_name: z.string().min(1).max(200),
+    sections: z.array(compiledSectionSchema).min(1).max(6),
+  })
+  .superRefine((compiled, ctx) => {
+    // Two tables scoring the same stage would leave it ambiguous which one
+    // applies to a version, and the database rejects it anyway.
+    const stages = compiled.sections.map((s) => s.stage);
+    const duplicates = stages.filter((s, i) => stages.indexOf(s) !== i);
+    if (duplicates.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sections"],
+        message: `more than one section for stage: ${[...new Set(duplicates)].join(", ")}`,
+      });
+    }
+  });
+
+export type CompiledSection = z.infer<typeof compiledSectionSchema>;
+export type CompiledGuidebook = z.infer<typeof compiledGuidebookSchema>;
+
+/** A section turned into a valid rubric, with its stage carried alongside. */
+export type StagedRubric = {
+  stage: RubricStage;
+  sectionName: string;
+  rubric: Rubric;
+};
 
 /**
- * Turns a compiler draft into a valid rubric: rescales the weights to a
- * distribution, then validates the whole thing against the real contract.
+ * Turns one compiled section into a valid rubric: rescales the weights to a
+ * distribution, then validates against the real contract.
  *
- * Throws if the result still fails — which would mean a problem the compiler
- * cannot fix by rescaling, such as duplicate criterion keys.
+ * Rescaling happens per section, which is the point of splitting them. Merged,
+ * eight criteria across two 100% tables would each be halved; separately, each
+ * table keeps the weights the guidebook actually states.
+ *
+ * Throws if the result still fails — a problem rescaling cannot fix, such as
+ * duplicate criterion keys.
  */
-export function finaliseDraft(draft: CompiledRubricDraft): Rubric {
-  return rubricSchema.parse({
-    ...draft,
-    criteria: normaliseWeights(draft.criteria),
+export function finaliseSection(
+  section: CompiledSection,
+  competitionName: string,
+): StagedRubric {
+  const rubric = rubricSchema.parse({
+    rubric_name: `${competitionName} — ${STAGE_LABELS[section.stage]}`,
+    criteria: normaliseWeights(section.criteria),
+    format_rules: section.format_rules,
   });
+
+  return { stage: section.stage, sectionName: section.section_name, rubric };
+}
+
+export function finaliseCompiled(compiled: CompiledGuidebook): StagedRubric[] {
+  return compiled.sections.map((section) =>
+    finaliseSection(section, compiled.competition_name),
+  );
 }
 
 /**

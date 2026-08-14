@@ -319,6 +319,10 @@ export type Database = {
           name: string;
           source: Database["public"]["Enums"]["rubric_source"];
           schema_json: Json;
+          /** Which assessment this rubric scores (migration 0010). */
+          stage: string;
+          /** The guidebook it was compiled from; null for built-in rubrics. */
+          guidebook_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -328,6 +332,8 @@ export type Database = {
           name: string;
           source: Database["public"]["Enums"]["rubric_source"];
           schema_json: Json;
+          stage?: string;
+          guidebook_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -337,9 +343,18 @@ export type Database = {
           name?: string;
           source?: Database["public"]["Enums"]["rubric_source"];
           schema_json?: Json;
+          stage?: string;
+          guidebook_id?: string | null;
           created_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "rubrics_guidebook_id_fkey";
+            columns: ["guidebook_id"];
+            isOneToOne: false;
+            referencedRelation: "guidebooks";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "rubrics_team_id_fkey";
             columns: ["team_id"];

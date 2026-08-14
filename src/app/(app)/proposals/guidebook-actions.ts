@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { SaveRubricState, UploadState } from "@/app/(app)/proposals/form-state";
 import { toJson } from "@/lib/db";
 import { runCompilation } from "@/lib/pipeline/compile-rubric";
-import { rubricSchema } from "@/lib/schemas/rubric";
+import { rubricSchema, rubricStageSchema } from "@/lib/schemas/rubric";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 
@@ -139,14 +139,24 @@ export async function recompileGuidebookAction(
  * page flags when versions were judged differently. Existing scores are never
  * rewritten — the rubric they used is frozen the moment it scores something.
  */
+const editedSectionsSchema = z
+  .array(
+    z.object({
+      stage: rubricStageSchema,
+      rubric: rubricSchema,
+    }),
+  )
+  .min(1)
+  .max(6);
+
 export async function saveProposalRubricAction(
   guidebookId: string,
-  edited: unknown,
+  editedSections: unknown,
 ): Promise<SaveRubricState> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You must be signed in." };
 
-  const parsed = rubricSchema.safeParse(edited);
+  const parsed = editedSectionsSchema.safeParse(editedSections);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     return {
@@ -176,27 +186,37 @@ export async function saveProposalRubricAction(
   const trackId = guidebook.proposals?.track_id;
   if (!trackId) return { status: "error", message: "Proposal track missing." };
 
-  const { data: rubric, error } = await supabase
+  // One rubric row per assessment stage. Inserted together so a partial save
+  // cannot leave a competition with a presentation rubric and no proposal one.
+  const { data: inserted, error } = await supabase
     .from("rubrics")
-    .insert({
-      team_id: guidebook.team_id,
-      track_id: trackId,
-      name: parsed.data.rubric_name,
-      source: "compiled_from_guidebook",
-      schema_json: toJson(parsed.data),
-    })
-    .select("id")
-    .single();
+    .insert(
+      parsed.data.map((section) => ({
+        team_id: guidebook.team_id,
+        track_id: trackId,
+        guidebook_id: guidebook.id,
+        stage: section.stage,
+        name: section.rubric.rubric_name,
+        source: "compiled_from_guidebook" as const,
+        schema_json: toJson(section.rubric),
+      })),
+    )
+    .select("id, stage");
 
-  if (error || !rubric) {
+  if (error || !inserted || inserted.length === 0) {
     console.error("[guidebook] rubric insert failed:", error?.message);
     return { status: "error", message: "Could not save the rubric." };
   }
 
-  // Point the proposal at its competition's rubric.
+  // The proposal is the written document, so it is scored by the proposal-stage
+  // rubric. Falling back to the first only matters for a guidebook that defines
+  // no proposal assessment at all, which is rare but not worth failing over.
+  const proposalRubric =
+    inserted.find((r) => r.stage === "proposal") ?? inserted[0];
+
   const { error: proposalError } = await supabase
     .from("proposals")
-    .update({ rubric_id: rubric.id })
+    .update({ rubric_id: proposalRubric.id })
     .eq("id", guidebook.proposal_id);
 
   if (proposalError) {
@@ -205,10 +225,13 @@ export async function saveProposalRubricAction(
   }
 
   const admin = createAdminClient();
-  await admin.from("guidebooks").update({ rubric_id: rubric.id }).eq("id", guidebookId);
+  await admin
+    .from("guidebooks")
+    .update({ rubric_id: proposalRubric.id })
+    .eq("id", guidebookId);
 
   revalidatePath(`/proposals/${guidebook.proposal_id}`);
-  return { status: "saved", rubricId: rubric.id };
+  return { status: "saved", rubricId: proposalRubric.id };
 }
 
 const switchSchema = z.object({

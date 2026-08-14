@@ -170,7 +170,7 @@ export function GuidebookPanel({
       ) : null}
 
       {/* Review-and-correct, before the rubric governs anything. */}
-      {guidebook.draft && !guidebook.savedRubricId ? (
+      {guidebook.sections.length > 0 && !guidebook.savedRubricId ? (
         <>
           <div className="rounded-[16px] bg-violet-100/60 p-5">
             <h3 className="font-bold text-primary">Check this before saving</h3>
@@ -182,7 +182,7 @@ export function GuidebookPanel({
             </p>
           </div>
 
-          <RubricEditor guidebookId={guidebook.id} draft={guidebook.draft} />
+          <RubricEditor guidebookId={guidebook.id} sections={guidebook.sections} />
         </>
       ) : null}
     </section>

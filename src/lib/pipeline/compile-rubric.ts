@@ -11,8 +11,8 @@ import { toJson } from "@/lib/db";
 import { logEvent } from "@/lib/events";
 import { extractPdf, ExtractionError } from "@/lib/extraction/pdf";
 import {
-  compiledRubricDraftSchema,
-  finaliseDraft,
+  compiledGuidebookSchema,
+  finaliseCompiled,
 } from "@/lib/schemas/rubric";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -25,9 +25,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * exception.
  *
  * The result lands in `guidebooks.compiled_json`, NOT in `rubrics`. A rubrics row
- * is immediately selectable when creating a proposal, so an unreviewed rubric
- * would be usable before anyone had checked what the model read out of the PDF.
- * The user reviews and saves; only then does a rubric exist.
+ * is immediately usable, so an unreviewed rubric would score submissions before
+ * anyone had checked what the model read out of the PDF. The user reviews and
+ * saves; only then do rubrics exist.
+ *
+ * A guidebook compiles into one rubric PER STAGE — proposal, presentation and so
+ * on. Guidebooks assess those separately, with a table each summing to 100%, and
+ * flattening them would halve every weight and apply delivery criteria to a
+ * written document.
  *
  * Uses the evaluation-grade model rather than the fast one. This runs once per
  * competition and produces the yardstick every later score depends on — the wrong
@@ -98,7 +103,7 @@ export async function runCompilation(guidebookId: string): Promise<void> {
       return;
     }
 
-    let draft;
+    let compiled;
     try {
       const generated = await generateJson({
         model: EVALUATION_MODEL,
@@ -109,20 +114,21 @@ export async function runCompilation(guidebookId: string): Promise<void> {
           trackName: proposalTrack?.name ?? "business plan",
         }),
         // The loose draft schema: weights come back as the guidebook writes them
-        // (often percentages) and are rescaled afterwards.
-        schema: compiledRubricDraftSchema,
+        // (percentages, per section) and are rescaled afterwards.
+        schema: compiledGuidebookSchema,
       });
-      draft = generated.data;
+      compiled = generated.data;
     } catch (cause) {
       await fail(cause instanceof LlmError ? cause.message : String(cause));
       return;
     }
 
-    // Rescale to a distribution and validate against the real contract. If this
-    // throws, the draft has a problem rescaling cannot fix — duplicate keys, say.
-    let rubric;
+    // Rescale each section independently, then validate against the real
+    // contract. Per-section rescaling is the point: merged, two 100% tables would
+    // halve every weight the guidebook actually assigned.
+    let staged;
     try {
-      rubric = finaliseDraft(draft);
+      staged = finaliseCompiled(compiled);
     } catch (cause) {
       await fail(
         `The compiled rubric was not valid: ${
@@ -136,7 +142,10 @@ export async function runCompilation(guidebookId: string): Promise<void> {
       .from("guidebooks")
       .update({
         status: "complete",
-        compiled_json: toJson(rubric),
+        compiled_json: toJson({
+          competition_name: compiled.competition_name,
+          staged,
+        }),
         error: null,
       })
       .eq("id", guidebookId);
@@ -146,7 +155,11 @@ export async function runCompilation(guidebookId: string): Promise<void> {
       teamId: guidebook.team_id,
       properties: {
         guidebook_id: guidebookId,
-        criteria_count: rubric.criteria.length,
+        stages: staged.map((section) => section.stage),
+        criteria_count: staged.reduce(
+          (total, section) => total + section.rubric.criteria.length,
+          0,
+        ),
         prompt_version: COMPILE_PROMPT_VERSION,
         model: EVALUATION_MODEL,
       },

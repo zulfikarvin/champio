@@ -185,8 +185,15 @@ export async function getProposal(id: string): Promise<ProposalDetail | null> {
 }
 
 /**
- * The rubrics a competition can be scored against: its track's built-in rubric,
- * plus any rubric compiled from its own guidebook.
+ * The rubrics a competition's *written proposal* can be scored against: the
+ * track's built-in rubric, plus any proposal-stage rubric compiled from a
+ * guidebook.
+ *
+ * Filtered to `stage = 'proposal'` deliberately. A guidebook usually also defines
+ * a presentation rubric — "Kejelasan dan Struktur Presentasi", "Penampilan dan
+ * Komunikasi" — and those criteria cannot be judged from a PDF nobody delivers.
+ * Offering them here would let a team score a document on how well it was
+ * presented.
  */
 export async function listRubricChoices(
   trackId: string,
@@ -198,6 +205,7 @@ export async function listRubricChoices(
     .from("rubrics")
     .select("id, name, source")
     .eq("track_id", trackId)
+    .eq("stage", "proposal")
     .order("source");
 
   if (error) throw new Error(`failed to load rubrics: ${error.message}`);

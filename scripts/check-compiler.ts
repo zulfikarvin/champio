@@ -35,7 +35,8 @@ async function main() {
 
   const { createClient } = await import("@supabase/supabase-js");
   const { runCompilation } = await import("../src/lib/pipeline/compile-rubric");
-  const { rubricSchema } = await import("../src/lib/schemas/rubric");
+  const { rubricStageSchema, rubricSchema } = await import("../src/lib/schemas/rubric");
+  const { z } = await import("zod");
   type Database = import("../src/lib/database.types").Database;
 
   const admin = createClient<Database>(
@@ -91,37 +92,67 @@ async function main() {
     process.exit(1);
   }
 
-  const rubric = rubricSchema.parse(done!.compiled_json);
+  const compiled = z
+    .object({
+      competition_name: z.string(),
+      staged: z.array(
+        z.object({
+          stage: rubricStageSchema,
+          sectionName: z.string(),
+          rubric: rubricSchema,
+        }),
+      ),
+    })
+    .parse(done!.compiled_json);
 
-  console.log(`Rubric: ${rubric.rubric_name}`);
-  console.log(`Criteria: ${rubric.criteria.length}\n`);
+  console.log(`Competition: ${compiled.competition_name}`);
+  console.log(`Assessments found: ${compiled.staged.length}`);
 
-  let weightSum = 0;
-  for (const criterion of rubric.criteria) {
-    weightSum += criterion.weight;
-    const bands = Object.keys(criterion.scoring_guide).length;
-    console.log(
-      `  ${(criterion.weight * 100).toFixed(1).padStart(5)}%  ${criterion.label.padEnd(34).slice(0, 34)} ${bands} band(s)`,
+  for (const section of compiled.staged) {
+    console.log(`\n── ${section.stage.toUpperCase()} — "${section.sectionName}"`);
+
+    let weightSum = 0;
+    for (const criterion of section.rubric.criteria) {
+      weightSum += criterion.weight;
+      const bands = Object.keys(criterion.scoring_guide).length;
+      console.log(
+        `  ${(criterion.weight * 100).toFixed(1).padStart(5)}%  ${criterion.label
+          .padEnd(42)
+          .slice(0, 42)} ${bands} band(s)`,
+      );
+    }
+    console.log(`         weights sum to ${(weightSum * 100).toFixed(2)}%`);
+
+    const fr = section.rubric.format_rules;
+    const rules: string[] = [];
+    if (fr.max_slides) rules.push(`max_slides ${fr.max_slides}`);
+    if (fr.max_pages) rules.push(`max_pages ${fr.max_pages}`);
+    if (fr.max_words) rules.push(`max_words ${fr.max_words}`);
+    if (fr.language) rules.push(`language ${fr.language}`);
+    console.log(`         format: ${rules.length > 0 ? rules.join(", ") : "(none)"}`);
+    for (const rule of fr.other) console.log(`                 · ${rule}`);
+  }
+
+  // The whole point of the split: nothing about delivery should reach the rubric
+  // that scores a written document.
+  const proposalSection = compiled.staged.find((s) => s.stage === "proposal");
+  if (proposalSection) {
+    const leaked = proposalSection.rubric.criteria.filter((c) =>
+      /present|pitch|deliver|komunikasi|penampilan|menjawab|tanya/i.test(
+        `${c.key} ${c.label}`,
+      ),
     );
-    console.log(`         key: ${criterion.key}`);
-  }
-  console.log(`\n  weights sum to ${(weightSum * 100).toFixed(2)}%  (normalised)`);
-
-  console.log("\nFormat rules:");
-  const fr = rubric.format_rules;
-  if (fr.max_slides) console.log(`  max_slides  ${fr.max_slides}`);
-  if (fr.max_pages) console.log(`  max_pages   ${fr.max_pages}`);
-  if (fr.max_words) console.log(`  max_words   ${fr.max_words}`);
-  if (fr.language) console.log(`  language    ${fr.language}`);
-  for (const rule of fr.other) console.log(`  other       ${rule}`);
-  if (!fr.max_slides && !fr.max_pages && !fr.max_words && !fr.language && fr.other.length === 0) {
-    console.log("  (none extracted)");
-  }
-
-  console.log("\nSample scoring guide:");
-  const sample = rubric.criteria[0];
-  for (const [range, text] of Object.entries(sample.scoring_guide)) {
-    console.log(`  ${sample.key} ${range}: ${text.slice(0, 78)}`);
+    console.log(
+      `\nProposal rubric purity: ${
+        leaked.length === 0
+          ? "clean — no delivery criteria"
+          : `LEAKED — ${leaked.map((c) => c.label).join(", ")}`
+      }`,
+    );
+  } else {
+    console.log(
+      "\n! No proposal-stage section — uploads would fall back to another stage.",
+    );
   }
 
   await admin.from("guidebooks").delete().eq("id", guidebookId);

@@ -2,7 +2,13 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { GuidebookStatus } from "@/lib/db";
-import { rubricSchema, type Rubric } from "@/lib/schemas/rubric";
+import {
+  rubricSchema,
+  rubricStageSchema,
+  type Rubric,
+  type RubricStage,
+} from "@/lib/schemas/rubric";
+import { z } from "zod";
 
 /**
  * Guidebook reads.
@@ -10,7 +16,31 @@ import { rubricSchema, type Rubric } from "@/lib/schemas/rubric";
  * A guidebook belongs to a proposal (migration 0009) — a competition has one set
  * of judging criteria, and the rubric a version is scored against comes from that
  * competition's guidebook. RLS scopes everything to the caller's teams.
+ *
+ * A guidebook compiles into one rubric per assessment stage (migration 0010),
+ * because a real guidebook scores the written proposal and the live presentation
+ * in separate tables.
  */
+
+/** The shape the compiler writes into `guidebooks.compiled_json`. */
+const compiledDraftSchema = z.object({
+  competition_name: z.string(),
+  staged: z
+    .array(
+      z.object({
+        stage: rubricStageSchema,
+        sectionName: z.string(),
+        rubric: rubricSchema,
+      }),
+    )
+    .min(1),
+});
+
+export type DraftSection = {
+  stage: RubricStage;
+  sectionName: string;
+  rubric: Rubric;
+};
 
 export type ProposalGuidebook = {
   id: string;
@@ -20,8 +50,9 @@ export type ProposalGuidebook = {
   createdAt: string;
   /** Set once the user has reviewed the compiled draft and saved it. */
   savedRubricId: string | null;
-  /** The compiled draft, when compilation finished and it validates. */
-  draft: Rubric | null;
+  competitionName: string | null;
+  /** One entry per assessment the guidebook defines, awaiting review. */
+  sections: DraftSection[];
   /** Present when a draft exists but no longer satisfies the rubric contract. */
   draftError: string | null;
 };
@@ -41,13 +72,22 @@ export async function getProposalGuidebook(
   if (error) throw new Error(`failed to load guidebook: ${error.message}`);
   if (!data) return null;
 
-  let draft: Rubric | null = null;
+  let sections: DraftSection[] = [];
+  let competitionName: string | null = null;
   let draftError: string | null = null;
 
-  if (data.compiled_json) {
-    const parsed = rubricSchema.safeParse(data.compiled_json);
-    if (parsed.success) draft = parsed.data;
-    else draftError = parsed.error.issues[0]?.message ?? "The draft is not valid.";
+  // Only read the draft while it is still a draft. Once `rubric_id` is set the
+  // saved rubrics are the source of truth, and compiled_json is just the input
+  // that produced them — parsing it then would surface a "draft is not valid"
+  // warning about something the user already reviewed and moved past.
+  if (data.compiled_json && !data.rubric_id) {
+    const parsed = compiledDraftSchema.safeParse(data.compiled_json);
+    if (parsed.success) {
+      competitionName = parsed.data.competition_name;
+      sections = parsed.data.staged;
+    } else {
+      draftError = parsed.error.issues[0]?.message ?? "The draft is not valid.";
+    }
   }
 
   return {
@@ -57,22 +97,8 @@ export async function getProposalGuidebook(
     error: data.error,
     createdAt: data.created_at,
     savedRubricId: data.rubric_id,
-    draft,
+    competitionName,
+    sections,
     draftError,
   };
-}
-
-/** Looks up which proposal a guidebook belongs to, for redirects after an action. */
-export async function getGuidebookProposalId(
-  guidebookId: string,
-): Promise<string | null> {
-  const supabase = await createClient();
-
-  const { data } = await supabase
-    .from("guidebooks")
-    .select("proposal_id")
-    .eq("id", guidebookId)
-    .maybeSingle();
-
-  return data?.proposal_id ?? null;
 }
