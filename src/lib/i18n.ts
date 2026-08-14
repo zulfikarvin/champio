@@ -89,7 +89,11 @@ const en = {
   "dash.openTracks": "Open tracks",
   "dash.yourTracks": "Your tracks",
   "dash.viewAll": "View all",
-  "dash.proposalsInProgress": "{count} competition(s) in progress.",
+  // Two keys rather than a plural engine: English needs one form change and
+  // Indonesian marks no plural at all, so a full CLDR ruleset would be weight
+  // for a single string. Revisit if a third locale arrives.
+  "dash.proposalsOne": "{count} competition in progress.",
+  "dash.proposalsMany": "{count} competitions in progress.",
 
   // ------------------------------------------------------------------ tracks
   "tracks.title": "Learning Tracks",
@@ -180,7 +184,8 @@ const id: Partial<Record<MessageKey, string>> = {
   "dash.openTracks": "Buka jalur belajar",
   "dash.yourTracks": "Jalur belajarmu",
   "dash.viewAll": "Lihat semua",
-  "dash.proposalsInProgress": "{count} kompetisi sedang berjalan.",
+  "dash.proposalsOne": "{count} kompetisi sedang berjalan.",
+  "dash.proposalsMany": "{count} kompetisi sedang berjalan.",
 
   "tracks.title": "Jalur Belajar",
   "tracks.subtitle":

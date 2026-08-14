@@ -31,7 +31,9 @@ export default async function DashboardPage() {
         </p>
         <h1 className="display-lg mt-1 text-primary">{t("dash.workspace")}</h1>
         <p className="mt-2 text-sm text-ink-muted">
-          {t("dash.proposalsInProgress", { count: proposalCount ?? 0 })}
+          {t(proposalCount === 1 ? "dash.proposalsOne" : "dash.proposalsMany", {
+            count: proposalCount ?? 0,
+          })}
         </p>
       </header>
 
