@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SignupForm } from "@/app/(auth)/signup/signup-form";
-import { t } from "@/lib/i18n";
+import { getT } from "@/lib/i18n-server";
 
 export const metadata: Metadata = { title: "Create account" };
 
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
+  const t = await getT();
   const params = await searchParams;
   const rawNext = params.next;
   const next = typeof rawNext === "string" ? rawNext : "/dashboard";
 
   return (
     <>
-      <h1 className="display-lg mb-1 text-primary">Start competing</h1>
-      <p className="mb-8 text-sm text-ink-muted">
-        Create your account, then set up your team.
-      </p>
+      <h1 className="display-lg mb-1 text-primary">{t("auth.startCompeting")}</h1>
+      <p className="mb-8 text-sm text-ink-muted">{t("auth.startCompetingSub")}</p>
 
       <SignupForm next={next} />
 

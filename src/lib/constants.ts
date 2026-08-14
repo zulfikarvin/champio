@@ -2,6 +2,9 @@
 
 export const ACTIVE_TEAM_COOKIE = "champio_team";
 
+/** Chosen interface language. A preference, readable by both server and client. */
+export const LOCALE_COOKIE = "champio_locale";
+
 /** Routes that require a signed-in user. */
 export const PROTECTED_PREFIXES = [
   "/dashboard",

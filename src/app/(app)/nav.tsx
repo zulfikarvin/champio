@@ -11,7 +11,8 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { t, type MessageKey } from "@/lib/i18n";
+import { useT } from "@/components/locale-provider";
+import type { MessageKey } from "@/lib/i18n";
 
 type NavItem = {
   href: string;
@@ -44,6 +45,7 @@ function useIsActive() {
 
 /** Desktop sidebar navigation. Rendered inside the `lg:` aside. */
 export function SidebarNav({ isAdmin }: { isAdmin: boolean }) {
+  const t = useT();
   const items = useItems(isAdmin);
   const isActive = useIsActive();
 
@@ -79,6 +81,7 @@ export function SidebarNav({ isAdmin }: { isAdmin: boolean }) {
  * screen; it stays reachable from the sidebar on desktop and from the dashboard.
  */
 export function MobileNav({ isAdmin }: { isAdmin: boolean }) {
+  const t = useT();
   const items = useItems(isAdmin).filter((item) => item.href !== "/settings");
   const isActive = useIsActive();
 

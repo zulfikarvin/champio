@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CreateTeamForm } from "@/app/(app)/create-team-form";
-import { t } from "@/lib/i18n";
+import { getT } from "@/lib/i18n-server";
 import { getActiveTeam, listTeamMembers } from "@/lib/teams";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
+  const t = await getT();
   const activeTeam = await getActiveTeam();
   if (!activeTeam) redirect("/dashboard");
 

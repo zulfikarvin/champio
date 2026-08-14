@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "sonner";
+import { LocaleProvider } from "@/components/locale-provider";
+import { getLocale } from "@/lib/i18n-server";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -23,12 +25,18 @@ export const viewport: Viewport = {
   themeColor: "#240046",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Resolved once here so `<html lang>` is correct for screen readers and
+  // hyphenation, and so client components can read it from context.
+  const locale = await getLocale();
+
   return (
-    <html lang="en" className={`${jakarta.variable} h-full antialiased`}>
+    <html lang={locale} className={`${jakarta.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        {children}
-        <Toaster position="top-center" richColors />
+        <LocaleProvider locale={locale}>
+          {children}
+          <Toaster position="top-center" richColors />
+        </LocaleProvider>
       </body>
     </html>
   );

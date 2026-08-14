@@ -6,9 +6,10 @@ import { signUpAction } from "@/app/(auth)/actions";
 import { initialAuthState } from "@/app/(auth)/auth-state";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
-import { t } from "@/lib/i18n";
+import { useT } from "@/components/locale-provider";
 
 function SubmitButton() {
+  const t = useT();
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="w-full" disabled={pending}>
@@ -18,6 +19,7 @@ function SubmitButton() {
 }
 
 export function SignupForm({ next }: { next: string }) {
+  const t = useT();
   const [state, formAction] = useActionState(signUpAction, initialAuthState);
 
   return (

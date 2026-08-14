@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { t } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { getT } from "@/lib/i18n-server";
 
-export default function AuthLayout({ children }: LayoutProps<"/">) {
+export default async function AuthLayout({ children }: LayoutProps<"/">) {
+  const t = await getT();
+
   return (
     <div className="flex min-h-svh flex-col lg:flex-row">
       {/* Brand panel. Hidden below lg — on a 390px phone this would be a full
@@ -20,11 +23,16 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
         </div>
 
         <p className="text-xs text-violet-200/70">
-          Built for Indonesian student competitors.
+          {t("landing.footer")}
         </p>
       </aside>
 
-      <main className="flex flex-1 items-center justify-center px-5 py-12 sm:px-8">
+      <main className="relative flex flex-1 items-center justify-center px-5 py-12 sm:px-8">
+        {/* Upper right of the form panel, clear of the brand panel on desktop. */}
+        <div className="absolute right-5 top-5 sm:right-8 sm:top-6">
+          <LanguageSwitcher />
+        </div>
+
         <div className="w-full max-w-sm">
           <Link
             href="/"

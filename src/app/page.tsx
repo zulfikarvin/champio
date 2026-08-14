@@ -8,7 +8,8 @@ import {
   Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { t } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { getT } from "@/lib/i18n-server";
 
 const FEATURES = [
   {
@@ -48,7 +49,9 @@ const TRACKS = [
   },
 ] as const;
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const t = await getT();
+
   return (
     <div className="flex flex-1 flex-col">
       <header className="sticky top-0 z-30 border-b border-hairline bg-canvas/85 backdrop-blur">
@@ -57,13 +60,14 @@ export default function LandingPage() {
             {t("app.name")}
           </span>
           <nav className="flex items-center gap-2">
+            <LanguageSwitcher className="mr-1" />
             <Link href="/login">
               <Button variant="ghost" size="sm">
                 {t("auth.signIn")}
               </Button>
             </Link>
             <Link href="/signup">
-              <Button size="sm">Get started</Button>
+              <Button size="sm">{t("landing.getStarted")}</Button>
             </Link>
           </nav>
         </div>
@@ -80,7 +84,7 @@ export default function LandingPage() {
           <div className="relative mx-auto max-w-6xl px-5 pb-16 pt-14 sm:px-8 sm:pb-24 sm:pt-20">
             <span className="inline-flex items-center gap-2 rounded-full bg-violet-100 px-4 py-1.5 text-xs font-semibold text-secondary">
               <Trophy className="size-3.5" />
-              For Indonesian student competition enthusiasts
+              {t("landing.badge")}
             </span>
 
             <h1 className="display-xl mt-6 max-w-3xl text-primary">
@@ -88,15 +92,13 @@ export default function LandingPage() {
             </h1>
 
             <p className="mt-6 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
-              Champio turns competition preparation into a loop you can actually
-              run: learn the frameworks, submit a draft, get scored feedback, and
-              watch your score climb version over version.
+              {t("landing.heroSub")}
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href="/signup" className="sm:w-auto">
                 <Button size="lg" className="w-full sm:w-auto">
-                  Start free
+                  {t("landing.startFree")}
                   <ArrowRight />
                 </Button>
               </Link>
@@ -112,12 +114,9 @@ export default function LandingPage() {
         {/* Features */}
         <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
           <h2 className="display-lg max-w-2xl text-primary">
-            Feedback specific enough to act on
+            {t("landing.featuresTitle")}
           </h2>
-          <p className="mt-3 max-w-xl text-ink-muted">
-            Not &ldquo;strengthen your analysis&rdquo; — which slide, what to
-            change, and what it is worth.
-          </p>
+          <p className="mt-3 max-w-xl text-ink-muted">{t("landing.featuresSub")}</p>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2">
             {FEATURES.map(({ icon: Icon, title, body }) => (
@@ -138,7 +137,7 @@ export default function LandingPage() {
         <section className="bg-primary-dark py-14 sm:py-20">
           <div className="mx-auto max-w-6xl px-5 sm:px-8">
             <h2 className="display-lg max-w-2xl text-white">
-              Three tracks, built around how each format is judged
+              {t("landing.tracksTitle")}
             </h2>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-3">
@@ -160,12 +159,12 @@ export default function LandingPage() {
         {/* CTA */}
         <section className="mx-auto max-w-6xl px-5 py-16 text-center sm:px-8 sm:py-24">
           <h2 className="display-lg mx-auto max-w-2xl text-primary">
-            Your next submission should score higher than your last
+            {t("landing.ctaTitle")}
           </h2>
           <div className="mt-8 flex justify-center">
             <Link href="/signup">
               <Button size="lg">
-                Create your team
+                {t("landing.ctaButton")}
                 <ArrowRight />
               </Button>
             </Link>
@@ -176,7 +175,7 @@ export default function LandingPage() {
       <footer className="border-t border-hairline py-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <span className="font-semibold text-primary">{t("app.name")}</span>
-          <span>Built for Indonesian student competitors.</span>
+          <span>{t("landing.footer")}</span>
         </div>
       </footer>
     </div>

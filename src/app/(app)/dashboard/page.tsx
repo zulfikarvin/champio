@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpen, CheckCircle2, FileText, Sparkles } from "lucide-react";
+import { getT } from "@/lib/i18n-server";
 import { listTracks } from "@/lib/learning";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTeam } from "@/lib/teams";
@@ -8,6 +9,7 @@ import { getActiveTeam } from "@/lib/teams";
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
+  const t = await getT();
   const activeTeam = await getActiveTeam();
   const supabase = await createClient();
 
@@ -27,7 +29,7 @@ export default async function DashboardPage() {
         <p className="text-sm font-semibold text-accent">
           {activeTeam?.teamName}
         </p>
-        <h1 className="display-lg mt-1 text-primary">Team workspace</h1>
+        <h1 className="display-lg mt-1 text-primary">{t("dash.workspace")}</h1>
         <p className="mt-2 text-sm text-ink-muted">
           {proposalCount ?? 0} proposal{proposalCount === 1 ? "" : "s"} in
           progress.
@@ -40,12 +42,10 @@ export default async function DashboardPage() {
           className="card group flex flex-col p-6 transition-shadow hover:shadow-[0_12px_24px_-10px_rgba(16,0,43,0.12)]"
         >
           <FileText className="mb-3 size-6 text-accent" />
-          <h2 className="text-lg font-bold text-primary">Diagnose a proposal</h2>
-          <p className="mt-1 text-sm text-ink-muted">
-            Upload a draft and get rubric-aligned, evidence-cited feedback.
-          </p>
+          <h2 className="text-lg font-bold text-primary">{t("dash.diagnose")}</h2>
+          <p className="mt-1 text-sm text-ink-muted">{t("dash.diagnoseSub")}</p>
           <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent">
-            Open proposals
+            {t("dash.openProposals")}
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </span>
         </Link>
@@ -55,12 +55,10 @@ export default async function DashboardPage() {
           className="card group flex flex-col p-6 transition-shadow hover:shadow-[0_12px_24px_-10px_rgba(16,0,43,0.12)]"
         >
           <BookOpen className="mb-3 size-6 text-accent" />
-          <h2 className="text-lg font-bold text-primary">Build the skills</h2>
-          <p className="mt-1 text-sm text-ink-muted">
-            Read the articles, then test yourself when you want to.
-          </p>
+          <h2 className="text-lg font-bold text-primary">{t("dash.buildSkills")}</h2>
+          <p className="mt-1 text-sm text-ink-muted">{t("dash.buildSkillsSub")}</p>
           <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent">
-            Open tracks
+            {t("dash.openTracks")}
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </span>
         </Link>
@@ -68,12 +66,12 @@ export default async function DashboardPage() {
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-bold text-primary">Your tracks</h2>
+          <h2 className="text-lg font-bold text-primary">{t("dash.yourTracks")}</h2>
           <Link
             href="/tracks"
             className="text-sm font-semibold text-accent hover:underline"
           >
-            View all
+            {t("dash.viewAll")}
           </Link>
         </div>
 
