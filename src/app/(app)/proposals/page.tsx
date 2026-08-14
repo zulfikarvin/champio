@@ -3,26 +3,26 @@ import Link from "next/link";
 import { FileText, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScoreBadge } from "@/components/report/score-badge";
+import { getT } from "@/lib/i18n-server";
 import { listProposals } from "@/lib/proposals";
 
 export const metadata: Metadata = { title: "Proposals" };
 
 export default async function ProposalsPage() {
+  const t = await getT();
   const proposals = await listProposals();
 
   return (
     <div className="mx-auto w-full max-w-4xl">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="display-lg text-primary">Competitions</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Each competition holds one guidebook and every version of your entry.
-          </p>
+          <h1 className="display-lg text-primary">{t("comp.title")}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{t("comp.subtitle")}</p>
         </div>
         <Link href="/proposals/new">
           <Button size="sm">
             <Plus />
-            New competition
+            {t("comp.new")}
           </Button>
         </Link>
       </header>
@@ -33,17 +33,15 @@ export default async function ProposalsPage() {
             <FileText className="size-6 text-accent" />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-primary">No competitions yet</h2>
+            <h2 className="text-lg font-bold text-primary">{t("comp.none")}</h2>
             <p className="mt-1 max-w-md text-sm text-ink-muted">
-              Add a competition, upload its guidebook so Champio scores against
-              the real judging criteria, then upload your drafts version by
-              version.
+              {t("comp.noneSub")}
             </p>
           </div>
           <Link href="/proposals/new">
             <Button>
               <Plus />
-              Add your first competition
+              {t("comp.addFirst")}
             </Button>
           </Link>
         </div>
@@ -62,11 +60,11 @@ export default async function ProposalsPage() {
                   <p className="mt-1 truncate text-xs text-ink-muted">
                     {proposal.trackName} ·{" "}
                     {proposal.rubricIsDefault
-                      ? "built-in rubric"
+                      ? t("comp.builtInRubric")
                       : proposal.rubricName}{" "}
                     ·{" "}
                     {proposal.versionCount === 0
-                      ? "no versions"
+                      ? t("comp.noVersions")
                       : `${proposal.versionCount} version${proposal.versionCount === 1 ? "" : "s"}`}
                   </p>
                 </div>

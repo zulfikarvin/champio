@@ -6,6 +6,7 @@ import { createProposalAction } from "@/app/(app)/proposals/actions";
 import { initialCreateProposalState } from "@/app/(app)/proposals/form-state";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Label } from "@/components/ui/field";
+import { useT } from "@/components/locale-provider";
 import { cn } from "@/lib/cn";
 
 export type TrackOption = {
@@ -16,10 +17,11 @@ export type TrackOption = {
 };
 
 function SubmitButton() {
+  const t = useT();
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-      {pending ? "Creating…" : "Create competition"}
+      {pending ? t("comp.creating") : t("comp.create")}
     </Button>
   );
 }
@@ -33,6 +35,7 @@ function SubmitButton() {
  * to attach it to was the wrong order — the guidebook is what defines the rubric.
  */
 export function NewProposalForm({ tracks }: { tracks: TrackOption[] }) {
+  const t = useT();
   const [state, formAction] = useActionState(
     createProposalAction,
     initialCreateProposalState,
@@ -44,9 +47,9 @@ export function NewProposalForm({ tracks }: { tracks: TrackOption[] }) {
   return (
     <form action={formAction} className="flex flex-col gap-6">
       <Field
-        label="Competition name"
+        label={t("comp.nameLabel")}
         htmlFor="title"
-        hint="However you refer to it — the organiser's name works well."
+        hint={t("comp.nameHint")}
       >
         <Input
           id="title"
@@ -58,7 +61,7 @@ export function NewProposalForm({ tracks }: { tracks: TrackOption[] }) {
       </Field>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={`track-${trackId}`}>Competition format</Label>
+        <Label htmlFor={`track-${trackId}`}>{t("comp.formatLabel")}</Label>
         <input type="hidden" name="trackId" value={trackId} />
         <input
           type="hidden"
@@ -84,11 +87,11 @@ export function NewProposalForm({ tracks }: { tracks: TrackOption[] }) {
             </button>
           ))}
         </div>
-        <p className="text-xs text-ink-muted">
-          Scoring starts with Champio&rsquo;s built-in rubric for this format.
-          Upload the competition&rsquo;s guidebook afterwards and the real judging
-          criteria replace it.
-        </p>
+        {/* Format names below stay in English deliberately: "Business Plan",
+            "Business Case" are how these competitions are advertised in
+            Indonesia, so translating them would make a format harder to
+            recognise rather than easier. */}
+        <p className="text-xs text-ink-muted">{t("comp.formatHint")}</p>
       </div>
 
       {state.error ? (

@@ -105,6 +105,27 @@ const en = {
   "tracks.continue": "Continue",
   "tracks.quizzesLabel": "quizzes",
 
+  // ------------------------------------------------------------ competitions
+  "comp.title": "Competitions",
+  "comp.subtitle":
+    "Each competition holds one guidebook and every version of your entry.",
+  "comp.new": "New competition",
+  "comp.newSub":
+    "Pick the format you are competing in. Once it exists you can upload the guidebook and your draft versions.",
+  "comp.nameLabel": "Competition name",
+  "comp.nameHint": "However you refer to it — the organiser's name works well.",
+  "comp.formatLabel": "Competition format",
+  "comp.formatHint":
+    "Scoring starts with Champio's built-in rubric for this format. Upload the competition's guidebook afterwards and the real judging criteria replace it.",
+  "comp.create": "Create competition",
+  "comp.creating": "Creating…",
+  "comp.none": "No competitions yet",
+  "comp.noneSub":
+    "Add a competition, upload its guidebook so Champio scores against the real judging criteria, then upload your drafts version by version.",
+  "comp.addFirst": "Add your first competition",
+  "comp.builtInRubric": "built-in rubric",
+  "comp.noVersions": "no versions",
+
   // ---------------------------------------------------------------- landing
   "landing.badge": "For Indonesian student competition enthusiasts",
   "landing.heroSub":
@@ -195,6 +216,26 @@ const id: Partial<Record<MessageKey, string>> = {
   "tracks.openTrack": "Buka jalur",
   "tracks.continue": "Lanjutkan",
   "tracks.quizzesLabel": "kuis",
+
+  "comp.title": "Kompetisi",
+  "comp.subtitle":
+    "Setiap kompetisi memuat satu buku panduan dan seluruh versi karyamu.",
+  "comp.new": "Kompetisi baru",
+  "comp.newSub":
+    "Pilih format yang kamu ikuti. Setelah dibuat, kamu bisa mengunggah buku panduan dan versi drafmu.",
+  "comp.nameLabel": "Nama kompetisi",
+  "comp.nameHint": "Sebut sesuai kebiasaanmu — nama penyelenggara biasanya paling jelas.",
+  "comp.formatLabel": "Format kompetisi",
+  "comp.formatHint":
+    "Penilaian dimulai dengan rubrik bawaan Champio untuk format ini. Unggah buku panduan kompetisinya, dan kriteria penilaian aslinya akan menggantikan rubrik itu.",
+  "comp.create": "Buat kompetisi",
+  "comp.creating": "Membuat…",
+  "comp.none": "Belum ada kompetisi",
+  "comp.noneSub":
+    "Tambahkan kompetisi, unggah buku panduannya agar Champio menilai sesuai kriteria juri yang sebenarnya, lalu unggah drafmu versi demi versi.",
+  "comp.addFirst": "Tambah kompetisi pertamamu",
+  "comp.builtInRubric": "rubrik bawaan",
+  "comp.noVersions": "belum ada versi",
 
   "landing.badge": "Untuk mahasiswa Indonesia penggemar kompetisi",
   "landing.heroSub":

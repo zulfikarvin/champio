@@ -20,11 +20,18 @@ import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
  *    shape for content a team dips into mid-competition. Quizzes are now a
  *    separate, optional self-check.
  *
- * 3. **Track names are localised in the database.** `tracks.name_id` holds the
- *    Bahasa Indonesia label (migration 0011), falling back to `name` when absent
- *    so an untranslated track shows readable text rather than a blank. Article
- *    titles and bodies are not localised — a translation there is a rewrite, not
- *    a column.
+ * 3. **Track names stay in English; descriptions are localised.** "Business
+ *    Plan", "Business Case" and "Academic Essay" are the terms Indonesian
+ *    students actually use for these formats — competitions are advertised that
+ *    way, so translating the name to "Rencana Bisnis" would make a track harder
+ *    to recognise, not easier. The description is prose and does get translated,
+ *    from `tracks.description_id` (migration 0011).
+ *
+ *    `tracks.name_id` is populated but deliberately unread. It stays for the day
+ *    a locale wants translated format names; wiring it up is one line here.
+ *
+ *    Article titles and bodies are not localised either — a translation there is
+ *    a rewrite, not a column.
  *
  * 4. **Progress is derived, not stored.** It reflects quizzes passed, computed
  *    from `quiz_attempts`, so there is no progress record that can drift out of
@@ -94,7 +101,7 @@ export async function listTracks(
     supabase
       .from("tracks")
       .select(
-        "id, slug, name, description, name_id, description_id, learning_modules(id, quizzes(id))",
+        "id, slug, name, description, description_id, learning_modules(id, quizzes(id))",
       )
       .order("name"),
     loadAttempts(),
@@ -114,7 +121,8 @@ export async function listTracks(
     return {
       id: track.id,
       slug: track.slug,
-      name: (locale === "id" ? track.name_id : null) ?? track.name,
+      // Name stays English on purpose — see note 3 at the top of this file.
+      name: track.name,
       description:
         (locale === "id" ? track.description_id : null) ?? track.description,
       moduleCount: trackModules.length,
@@ -148,7 +156,7 @@ export async function getTrack(
     supabase
       .from("tracks")
       .select(
-        `id, slug, name, description, name_id, description_id,
+        `id, slug, name, description, description_id,
          learning_modules(id, order_index, title, est_minutes, is_draft, quizzes(id))`,
       )
       .eq("slug", slug)
@@ -184,7 +192,7 @@ export async function getTrack(
   return {
     id: track.id,
     slug: track.slug,
-    name: (locale === "id" ? track.name_id : null) ?? track.name,
+    name: track.name,
     description:
       (locale === "id" ? track.description_id : null) ?? track.description,
     modules,
