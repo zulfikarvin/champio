@@ -57,7 +57,15 @@ export default async function ModulePage({
 
       {/* `prose` comes from @tailwindcss/typography. The overrides align it with
           the brand tokens — table styling matters here because several articles
-          teach through comparison tables. */}
+          teach through comparison tables.
+
+          Code colour is scoped to `:not(pre) > code` rather than `prose-code:`.
+          The variant matches EVERY <code>, including the one Markdown nests
+          inside <pre> — so the inline colour (#5a189a) was landing on the
+          near-black block at 1.9:1, effectively invisible. Scoping to inline code
+          leaves `pre code` inheriting the block's own #e0aaff, which measures
+          10.8:1. Fixing it by out-specifying `prose-code:` would have worked too,
+          but this says what is actually meant. */}
       <article
         className="prose prose-sm max-w-none
           prose-headings:font-bold prose-headings:text-primary
@@ -70,7 +78,10 @@ export default async function ModulePage({
           prose-blockquote:border-l-accent prose-blockquote:bg-violet-100/50
           prose-blockquote:not-italic prose-blockquote:py-1 prose-blockquote:px-4
           prose-blockquote:rounded-r-[12px] prose-blockquote:text-secondary-dark
-          prose-code:text-secondary prose-code:before:content-none prose-code:after:content-none
+          prose-code:before:content-none prose-code:after:content-none
+          [&_:not(pre)>code]:text-secondary
+          [&_:not(pre)>code]:bg-violet-100 [&_:not(pre)>code]:rounded-[4px]
+          [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:py-0.5
           prose-pre:bg-primary-dark prose-pre:text-violet-200 prose-pre:rounded-[16px]
           prose-table:text-sm prose-th:text-primary
           prose-hr:border-hairline
