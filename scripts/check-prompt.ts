@@ -159,6 +159,14 @@ async function main() {
     console.log(`  ${topFix.action}`);
   }
 
+  console.log(`
+Typos found: ${result.typos.length}`);
+  for (const typo of result.typos) {
+    console.log(`  [${typo.kind.padEnd(11)}] ${typo.where}`);
+    console.log(`      "${typo.quote}"`);
+    console.log(`   -> "${typo.correction}"`);
+  }
+
   const sampleEvidence = result.criteria_results.find((c) => c.evidence.length > 0);
   if (sampleEvidence) {
     console.log(`\nSample evidence [${sampleEvidence.key}]`);

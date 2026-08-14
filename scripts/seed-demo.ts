@@ -156,6 +156,36 @@ async function main() {
     Object.entries(V1_ISSUES).map(([key, issues]) => [key, issues.slice(1)]),
   );
 
+  // v1 carries mechanical errors; v2 has had them fixed except one. Gives the
+  // demo report a populated typo section and the delta view something to show.
+  const V1_TYPOS = [
+    {
+      where: "page 2",
+      quote: "recieve better wholesale pricing",
+      correction: "receive better wholesale pricing",
+      kind: "spelling" as const,
+    },
+    {
+      where: "page 4",
+      quote: "The margins is compressed",
+      correction: "The margins are compressed",
+      kind: "grammar" as const,
+    },
+    {
+      where: "page 7",
+      quote: "Warung Ku",
+      correction: "WarungKu",
+      kind: "consistency" as const,
+    },
+    {
+      where: "page 9",
+      quote: "Rp18000000",
+      correction: "Rp 18.000.000",
+      kind: "consistency" as const,
+    },
+  ];
+  const V2_TYPOS = V1_TYPOS.slice(3);
+
   function buildResult(
     scores: Record<string, number>,
     issues: Record<string, string[]>,
@@ -185,6 +215,7 @@ async function main() {
         { rule: "max_slides", pass: true, note: "14 of 15 slides used." },
         { rule: "language", pass: true, note: "" },
       ],
+      typos: versionLabel === "v1" ? V1_TYPOS : V2_TYPOS,
       summary:
         versionLabel === "v1"
           ? "Solid instinct for the problem, but the analysis does not yet earn the recommendation. Fix the sizing assumptions and the storyline first."

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { CriterionCard } from "@/components/report/criterion-card";
 import { ScoreRing } from "@/components/report/score-ring";
+import { TypoList } from "@/components/report/typo-list";
 import { createClient } from "@/lib/supabase/server";
 import { evaluationResultSchema } from "@/lib/schemas/evaluation";
 import { parseRubric } from "@/lib/schemas/rubric";
@@ -125,6 +126,14 @@ export default async function EvaluationReportPage({
             ))}
           </ul>
         </section>
+      ) : null}
+
+      {/* Mechanics before substance: this is the quick checklist, the criteria
+          below are the work. */}
+      {result.typos.length > 0 ? (
+        <div className="mb-6">
+          <TypoList typos={result.typos} />
+        </div>
       ) : null}
 
       {/* Criterion order follows the rubric, not the model's output order, so two

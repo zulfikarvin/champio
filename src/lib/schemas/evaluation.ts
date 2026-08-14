@@ -44,16 +44,50 @@ export const formatComplianceSchema = z.object({
   note: z.string().default(""),
 });
 
+export const TYPO_KINDS = [
+  "spelling",
+  "grammar",
+  "punctuation",
+  "consistency",
+  "formatting",
+] as const;
+
+/**
+ * A mechanical error found in the document.
+ *
+ * `quote` is required and must be text that actually appears in the submission.
+ * Without it a correction is unverifiable — the team cannot find what to change,
+ * and cannot tell an invented error from a real one. The quote is what makes this
+ * section trustworthy, so it is a schema requirement rather than a request.
+ */
+export const typoSchema = z.object({
+  /** Where to find it — "page 3", "slide 7". */
+  where: z.string().min(1),
+  /** The text exactly as written in the document. */
+  quote: z.string().min(1).max(300),
+  /** The same text, corrected. */
+  correction: z.string().min(1).max(300),
+  kind: z.enum(TYPO_KINDS),
+});
+
 /** Shape-only schema: use where the rubric is not in hand (e.g. reading an old
  *  result row whose rubric has since been superseded). */
 export const evaluationResultSchema = z.object({
   overall_score: z.number().min(0).max(100),
   criteria_results: z.array(criterionResultSchema).min(1),
   format_compliance: z.array(formatComplianceSchema).default([]),
+  /**
+   * Mechanical errors to fix. Defaulted rather than required so reports produced
+   * before this field existed still parse — the report screen simply shows no
+   * typo section for them.
+   */
+  typos: z.array(typoSchema).max(40).default([]),
   summary: z.string().min(1),
 });
 
 export type Fix = z.infer<typeof fixSchema>;
+export type Typo = z.infer<typeof typoSchema>;
+export type TypoKind = (typeof TYPO_KINDS)[number];
 export type CriterionResult = z.infer<typeof criterionResultSchema>;
 export type FormatCompliance = z.infer<typeof formatComplianceSchema>;
 export type EvaluationResult = z.infer<typeof evaluationResultSchema>;

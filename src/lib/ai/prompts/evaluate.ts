@@ -9,8 +9,9 @@ import type { Rubric } from "@/lib/schemas/rubric";
  * incomparable — and the whole product is built on comparing v1 to v2.
  *
  * v1 — initial rubric-driven evaluation prompt.
+ * v2 — adds a proofreading pass: mechanical errors returned alongside the scores.
  */
-export const EVALUATE_PROMPT_VERSION = "evaluate/v1";
+export const EVALUATE_PROMPT_VERSION = "evaluate/v2";
 
 export const EVALUATE_SYSTEM_INSTRUCTION = `You are an experienced judge for Indonesian university business competitions — business case, business plan, and academic essay categories. You have judged national and international finals and you know the difference between a submission that sounds impressive and one that would actually survive a judging panel.
 
@@ -70,6 +71,40 @@ EVIDENCE REQUIREMENTS:
   assumptions behind the 5% figure on page 4" is.
 - Order fixes by priority: 1 is the change that would raise the score most.`;
 
+/**
+ * Proofreading, folded into the same call.
+ *
+ * A second pass would be cleaner but not affordable: evaluation already takes
+ * ~40s against a 60s function ceiling, so a separate call would blow the budget
+ * and double the cost. The model is reading the whole document anyway.
+ *
+ * The failure mode to guard against is invention. A model asked for typos will
+ * produce some whether or not any exist, and a team told to fix an error that is
+ * not there loses trust in the whole report. Requiring an exact quote is what
+ * makes each one checkable — the team can search for it.
+ */
+const PROOFREADING = `PROOFREADING:
+
+Separately from the scoring, list mechanical errors a judge would notice. Put them
+in the "typos" array.
+
+- Quote the text EXACTLY as it appears in the submission. Do not paraphrase,
+  do not correct it in the quote, and do not invent text that is not there. If
+  you cannot quote it, do not report it.
+- Give the corrected version in "correction" — the same fragment, fixed.
+- Work in the language the document is written in. An Indonesian proposal gets
+  Indonesian corrections; do not translate it to English.
+- Classify each as: "spelling", "grammar", "punctuation", "consistency"
+  (inconsistent terms, capitalisation, or number formats across the document),
+  or "formatting" (spacing, stray characters, broken numbering).
+- Report at most 20, chosen for how much they undermine the document. A missing
+  full stop matters less than a company name spelled two different ways.
+- Extraction artefacts are NOT typos. Words joined across a line break, missing
+  spaces around page markers, or a stray hyphen from hyphenation come from our
+  PDF reader, not the author. Skip anything that looks like that.
+- If you find no real errors, return an empty array. An empty list is a valid and
+  useful answer; a fabricated one is not.`;
+
 export function buildEvaluationPrompt({
   rubric,
   documentText,
@@ -104,6 +139,8 @@ ${CALIBRATION}
 
 ${formatSection}
 
+${PROOFREADING}
+
 OUTPUT SHAPE — return exactly this JSON structure:
 
 {
@@ -119,6 +156,14 @@ OUTPUT SHAPE — return exactly this JSON structure:
     }
   ],
   "format_compliance": [{ "rule": <string>, "pass": <boolean>, "note": <string> }],
+  "typos": [
+    {
+      "where": <string: "page 3">,
+      "quote": <string: the text exactly as written>,
+      "correction": <string: the same text, corrected>,
+      "kind": <"spelling" | "grammar" | "punctuation" | "consistency" | "formatting">
+    }
+  ],
   "summary": <string: 2-4 sentences, the honest headline a judge would give>
 }
 
