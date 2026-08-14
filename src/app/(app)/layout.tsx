@@ -57,12 +57,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-svh flex-col lg:flex-row">
       <aside className="hidden w-64 shrink-0 border-r border-hairline bg-surface px-4 py-6 lg:flex lg:flex-col">
-        <div className="mb-6 flex items-center justify-between gap-2 px-3">
-          <Link href="/dashboard" className="text-xl font-extrabold text-primary">
-            {t("app.name")}
-          </Link>
-          <LanguageSwitcher />
-        </div>
+        <Link
+          href="/dashboard"
+          className="mb-6 px-3 text-xl font-extrabold text-primary"
+        >
+          {t("app.name")}
+        </Link>
 
         {activeTeam ? (
           <div className="mb-6">
@@ -111,10 +111,21 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </div>
       </header>
 
-      {/* pb-20 clears the fixed mobile tab bar. */}
-      <main className="flex-1 px-4 pb-20 pt-6 sm:px-6 lg:px-10 lg:pb-10">
-        {children}
-      </main>
+      {/* The content column. The sidebar occupies the left edge on desktop, so
+          anything placed inside it reads as top-LEFT of the screen — the language
+          switcher belongs here instead, at the top right of the content area.
+          min-w-0 stops a wide table inside a page from expanding this column. */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="hidden justify-end px-10 pt-6 lg:flex">
+          <LanguageSwitcher />
+        </header>
+
+        {/* pb-20 clears the fixed mobile tab bar. Reduced top padding on desktop
+            because the bar above already provides it. */}
+        <main className="flex-1 px-4 pb-20 pt-6 sm:px-6 lg:px-10 lg:pb-10 lg:pt-4">
+          {children}
+        </main>
+      </div>
 
       <MobileNav isAdmin={isAdmin} />
     </div>
