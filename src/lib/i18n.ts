@@ -89,6 +89,17 @@ const en = {
   "dash.openTracks": "Open tracks",
   "dash.yourTracks": "Your tracks",
   "dash.viewAll": "View all",
+  "dash.proposalsInProgress": "{count} competition(s) in progress.",
+
+  // ------------------------------------------------------------------ tracks
+  "tracks.title": "Learning Tracks",
+  "tracks.subtitle":
+    "Read the articles in any order. Quizzes are a separate, optional self-check.",
+  "tracks.comingSoon": "Content coming soon",
+  "tracks.open": "Open",
+  "tracks.openTrack": "Open track",
+  "tracks.continue": "Continue",
+  "tracks.quizzesLabel": "quizzes",
 
   // ---------------------------------------------------------------- landing
   "landing.badge": "For Indonesian student competition enthusiasts",
@@ -169,6 +180,16 @@ const id: Partial<Record<MessageKey, string>> = {
   "dash.openTracks": "Buka jalur belajar",
   "dash.yourTracks": "Jalur belajarmu",
   "dash.viewAll": "Lihat semua",
+  "dash.proposalsInProgress": "{count} kompetisi sedang berjalan.",
+
+  "tracks.title": "Jalur Belajar",
+  "tracks.subtitle":
+    "Baca artikelnya dalam urutan bebas. Kuis adalah uji mandiri terpisah dan opsional.",
+  "tracks.comingSoon": "Konten segera hadir",
+  "tracks.open": "Buka",
+  "tracks.openTrack": "Buka jalur",
+  "tracks.continue": "Lanjutkan",
+  "tracks.quizzesLabel": "kuis",
 
   "landing.badge": "Untuk mahasiswa Indonesia penggemar kompetisi",
   "landing.heroSub":

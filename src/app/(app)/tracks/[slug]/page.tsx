@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, BookOpen, Check, Clock, Target } from "lucide-react";
+import { getLocale } from "@/lib/i18n-server";
 import { getTrack } from "@/lib/learning";
 
 export const metadata: Metadata = { title: "Track" };
 
 export default async function TrackPage({ params }: PageProps<"/tracks/[slug]">) {
   const { slug } = await params;
-  const track = await getTrack(slug);
+  const track = await getTrack(slug, await getLocale());
   if (!track) notFound();
 
   return (

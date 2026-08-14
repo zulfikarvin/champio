@@ -125,6 +125,9 @@ export type Database = {
           slug: string;
           name: string;
           description: string | null;
+          /** Bahasa Indonesia name; null falls back to `name` (migration 0011). */
+          name_id: string | null;
+          description_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -132,6 +135,8 @@ export type Database = {
           slug: string;
           name: string;
           description?: string | null;
+          name_id?: string | null;
+          description_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -139,6 +144,8 @@ export type Database = {
           slug?: string;
           name?: string;
           description?: string | null;
+          name_id?: string | null;
+          description_id?: string | null;
           created_at?: string;
         };
         Relationships: [];

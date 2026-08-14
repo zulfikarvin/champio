@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpen, CheckCircle2, FileText, Sparkles } from "lucide-react";
-import { getT } from "@/lib/i18n-server";
+import { getLocale, getT } from "@/lib/i18n-server";
 import { listTracks } from "@/lib/learning";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTeam } from "@/lib/teams";
@@ -9,7 +9,7 @@ import { getActiveTeam } from "@/lib/teams";
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const t = await getT();
+  const [t, locale] = await Promise.all([getT(), getLocale()]);
   const activeTeam = await getActiveTeam();
   const supabase = await createClient();
 
@@ -20,7 +20,7 @@ export default async function DashboardPage() {
       .from("proposals")
       .select("id", { count: "exact", head: true })
       .eq("team_id", activeTeam?.teamId ?? ""),
-    listTracks(),
+    listTracks(locale),
   ]);
 
   return (
@@ -31,8 +31,7 @@ export default async function DashboardPage() {
         </p>
         <h1 className="display-lg mt-1 text-primary">{t("dash.workspace")}</h1>
         <p className="mt-2 text-sm text-ink-muted">
-          {proposalCount ?? 0} proposal{proposalCount === 1 ? "" : "s"} in
-          progress.
+          {t("dash.proposalsInProgress", { count: proposalCount ?? 0 })}
         </p>
       </header>
 
@@ -106,7 +105,7 @@ export default async function DashboardPage() {
 
                 {track.moduleCount === 0 ? (
                   <span className="mt-4 text-xs font-semibold text-ink-muted">
-                    Content coming soon
+                    {t("tracks.comingSoon")}
                   </span>
                 ) : (
                   <>
@@ -121,7 +120,9 @@ export default async function DashboardPage() {
                       />
                     </div>
                     <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-accent">
-                      {track.passedCount > 0 ? "Continue" : "Open"}
+                      {track.passedCount > 0
+                        ? t("tracks.continue")
+                        : t("tracks.open")}
                       <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                     </span>
                   </>

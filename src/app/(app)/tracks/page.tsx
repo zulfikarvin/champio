@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpen, CheckCircle2 } from "lucide-react";
+import { getLocale, getT } from "@/lib/i18n-server";
 import { listTracks } from "@/lib/learning";
 
 export const metadata: Metadata = { title: "Learning Tracks" };
 
 export default async function TracksPage() {
-  const tracks = await listTracks();
+  const [t, locale] = await Promise.all([getT(), getLocale()]);
+  const tracks = await listTracks(locale);
 
   return (
     <div className="mx-auto w-full max-w-4xl">
       <header className="mb-8">
-        <h1 className="display-lg text-primary">Learning Tracks</h1>
-        <p className="mt-2 text-sm text-ink-muted">
-          Read the articles in any order. Quizzes are a separate, optional self-check.
-        </p>
+        <h1 className="display-lg text-primary">{t("tracks.title")}</h1>
+        <p className="mt-2 text-sm text-ink-muted">{t("tracks.subtitle")}</p>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -39,7 +39,8 @@ export default async function TracksPage() {
                 </span>
                 {track.quizCount > 0 ? (
                   <span className="text-xs font-semibold text-ink-muted">
-                    {track.passedCount}/{track.quizCount} quizzes
+                    {track.passedCount}/{track.quizCount}{" "}
+                    {t("tracks.quizzesLabel")}
                   </span>
                 ) : null}
               </div>
@@ -51,7 +52,7 @@ export default async function TracksPage() {
 
               {track.moduleCount === 0 ? (
                 <p className="mt-4 text-xs font-semibold text-ink-muted">
-                  Content coming soon
+                  {t("tracks.comingSoon")}
                 </p>
               ) : (
                 <>
@@ -66,7 +67,7 @@ export default async function TracksPage() {
                     />
                   </div>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-accent">
-                    {started ? "Continue" : "Open track"}
+                    {started ? t("tracks.continue") : t("tracks.openTrack")}
                     <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                   </span>
                 </>

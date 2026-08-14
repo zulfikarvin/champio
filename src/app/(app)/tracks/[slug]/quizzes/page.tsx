@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Target } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { getLocale } from "@/lib/i18n-server";
 import { getTrack, listTrackQuizzes } from "@/lib/learning";
 
 export const metadata: Metadata = { title: "Test my Knowledge" };
@@ -12,7 +13,11 @@ export default async function TrackQuizzesPage({
 }: PageProps<"/tracks/[slug]/quizzes">) {
   const { slug } = await params;
 
-  const [track, quizzes] = await Promise.all([getTrack(slug), listTrackQuizzes(slug)]);
+  const locale = await getLocale();
+  const [track, quizzes] = await Promise.all([
+    getTrack(slug, locale),
+    listTrackQuizzes(slug),
+  ]);
   if (!track) notFound();
 
   const passed = quizzes.filter((q) => q.passed).length;

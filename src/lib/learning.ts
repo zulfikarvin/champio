@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { quizQuestionsSchema, type QuizQuestion } from "@/lib/schemas/quiz";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 
 /**
  * Learning tracks, modules and quizzes.
@@ -19,7 +20,13 @@ import { quizQuestionsSchema, type QuizQuestion } from "@/lib/schemas/quiz";
  *    shape for content a team dips into mid-competition. Quizzes are now a
  *    separate, optional self-check.
  *
- * 3. **Progress is derived, not stored.** It reflects quizzes passed, computed
+ * 3. **Track names are localised in the database.** `tracks.name_id` holds the
+ *    Bahasa Indonesia label (migration 0011), falling back to `name` when absent
+ *    so an untranslated track shows readable text rather than a blank. Article
+ *    titles and bodies are not localised — a translation there is a rewrite, not
+ *    a column.
+ *
+ * 4. **Progress is derived, not stored.** It reflects quizzes passed, computed
  *    from `quiz_attempts`, so there is no progress record that can drift out of
  *    sync with the attempts that produced it. It measures self-testing, not
  *    reading — nothing tracks whether an article was actually read.
@@ -78,13 +85,17 @@ async function loadAttempts(): Promise<
   return byQuiz;
 }
 
-export async function listTracks(): Promise<TrackSummary[]> {
+export async function listTracks(
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<TrackSummary[]> {
   const supabase = await createClient();
 
   const [{ data: tracks, error }, attempts] = await Promise.all([
     supabase
       .from("tracks")
-      .select("id, slug, name, description, learning_modules(id, quizzes(id))")
+      .select(
+        "id, slug, name, description, name_id, description_id, learning_modules(id, quizzes(id))",
+      )
       .order("name"),
     loadAttempts(),
   ]);
@@ -103,8 +114,9 @@ export async function listTracks(): Promise<TrackSummary[]> {
     return {
       id: track.id,
       slug: track.slug,
-      name: track.name,
-      description: track.description,
+      name: (locale === "id" ? track.name_id : null) ?? track.name,
+      description:
+        (locale === "id" ? track.description_id : null) ?? track.description,
       moduleCount: trackModules.length,
       quizCount: quizzes.length,
       passedCount,
@@ -126,14 +138,17 @@ export type TrackDetail = {
   totalMinutes: number;
 };
 
-export async function getTrack(slug: string): Promise<TrackDetail | null> {
+export async function getTrack(
+  slug: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<TrackDetail | null> {
   const supabase = await createClient();
 
   const [{ data: track, error }, attempts] = await Promise.all([
     supabase
       .from("tracks")
       .select(
-        `id, slug, name, description,
+        `id, slug, name, description, name_id, description_id,
          learning_modules(id, order_index, title, est_minutes, is_draft, quizzes(id))`,
       )
       .eq("slug", slug)
@@ -169,8 +184,9 @@ export async function getTrack(slug: string): Promise<TrackDetail | null> {
   return {
     id: track.id,
     slug: track.slug,
-    name: track.name,
-    description: track.description,
+    name: (locale === "id" ? track.name_id : null) ?? track.name,
+    description:
+      (locale === "id" ? track.description_id : null) ?? track.description,
     modules,
     quizCount: withQuiz.length,
     passedCount,
