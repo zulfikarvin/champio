@@ -9,7 +9,11 @@ import { UploadVersion } from "@/app/(app)/proposals/[id]/upload-version";
 import { ScoreBadge } from "@/components/report/score-badge";
 import { EVALUATIONS_PER_PROPOSAL_PER_DAY } from "@/lib/env";
 import { getProposalGuidebook } from "@/lib/guidebooks";
-import { getProposal, listRubricChoices } from "@/lib/proposals";
+import {
+  getProposal,
+  listProposalRubrics,
+  listRubricChoices,
+} from "@/lib/proposals";
 
 export const metadata: Metadata = { title: "Competition" };
 
@@ -31,9 +35,10 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
   // way, and the client learns nothing extra from the distinction.
   if (!proposal) notFound();
 
-  const [guidebook, rubricChoices] = await Promise.all([
+  const [guidebook, rubricChoices, rubricDetails] = await Promise.all([
     getProposalGuidebook(proposal.id),
     listRubricChoices(proposal.trackId),
+    listProposalRubrics(proposal.id, proposal.rubricId),
   ]);
 
   const evaluatedCount = proposal.versions.filter(
@@ -69,6 +74,7 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
           rubricIsDefault={proposal.rubricIsDefault}
           rubricChoices={rubricChoices}
           scoredRubrics={proposal.scoredRubrics}
+          rubricDetails={rubricDetails}
         />
       </div>
 

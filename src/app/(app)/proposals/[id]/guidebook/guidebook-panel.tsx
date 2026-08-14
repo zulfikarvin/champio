@@ -3,9 +3,10 @@ import { CompileProgress } from "@/app/(app)/proposals/[id]/guidebook/compile-pr
 import { RetryCompile } from "@/app/(app)/proposals/[id]/guidebook/retry-compile";
 import { RubricEditor } from "@/app/(app)/proposals/[id]/guidebook/rubric-editor";
 import { RubricSelector } from "@/app/(app)/proposals/[id]/guidebook/rubric-selector";
+import { RubricView } from "@/app/(app)/proposals/[id]/guidebook/rubric-view";
 import { UploadGuidebook } from "@/app/(app)/proposals/[id]/guidebook/upload-guidebook";
 import type { ProposalGuidebook } from "@/lib/guidebooks";
-import type { RubricChoice } from "@/lib/proposals";
+import type { RubricChoice, RubricDetail } from "@/lib/proposals";
 
 /**
  * The guidebook and rubric for one competition.
@@ -28,6 +29,7 @@ export function GuidebookPanel({
   rubricIsDefault,
   rubricChoices,
   scoredRubrics,
+  rubricDetails,
 }: {
   proposalId: string;
   teamId: string;
@@ -37,6 +39,7 @@ export function GuidebookPanel({
   rubricIsDefault: boolean;
   rubricChoices: RubricChoice[];
   scoredRubrics: RubricChoice[];
+  rubricDetails: RubricDetail[];
 }) {
   // Versions were judged by more than one yardstick, or by a rubric that is no
   // longer the active one. Either way the numbers below are not like-for-like.
@@ -93,6 +96,17 @@ export function GuidebookPanel({
             {mixedNote}
           </div>
         </div>
+
+        {/* Readable at all times — including the built-in rubric, which had no
+            surface anywhere in the product before this. */}
+        {rubricDetails.length > 0 ? (
+          <div className="mt-5 border-t border-hairline pt-5">
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-ink-muted">
+              What you are scored on
+            </h3>
+            <RubricView rubrics={rubricDetails} />
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -184,6 +198,15 @@ export function GuidebookPanel({
 
           <RubricEditor guidebookId={guidebook.id} sections={guidebook.sections} />
         </>
+      ) : null}
+
+      {guidebook.savedRubricId && rubricDetails.length > 0 ? (
+        <div>
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-ink-muted">
+            What you are scored on
+          </h3>
+          <RubricView rubrics={rubricDetails} />
+        </div>
       ) : null}
     </section>
   );

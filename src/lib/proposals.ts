@@ -2,6 +2,12 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { EvaluationStatus, SubmissionFileType } from "@/lib/db";
+import {
+  rubricSchema,
+  rubricStageSchema,
+  type Rubric,
+  type RubricStage,
+} from "@/lib/schemas/rubric";
 
 /**
  * Typed reads for proposals and their versions.
@@ -240,4 +246,72 @@ export async function listTracksWithRubrics() {
     defaultRubricId:
       (track.rubrics ?? []).find((r) => r.source === "default")?.id ?? null,
   }));
+}
+
+export type RubricDetail = {
+  id: string;
+  name: string;
+  stage: RubricStage;
+  isDefault: boolean;
+  /** True for the rubric that scores versions uploaded from now on. */
+  isActive: boolean;
+  rubric: Rubric;
+};
+
+/**
+ * Every rubric relevant to a competition: the one currently scoring its versions,
+ * plus any other stage compiled from its guidebook.
+ *
+ * Both are shown because a team should be able to read the criteria they are
+ * judged against at any time — including the built-in rubric, which otherwise has
+ * no surface anywhere in the product. The presentation rubric is included even
+ * though it never scores an upload; it is what the team will be judged on in the
+ * final, which is worth being able to read.
+ */
+export async function listProposalRubrics(
+  proposalId: string,
+  activeRubricId: string,
+): Promise<RubricDetail[]> {
+  const supabase = await createClient();
+
+  const { data: guidebook } = await supabase
+    .from("guidebooks")
+    .select("id")
+    .eq("proposal_id", proposalId)
+    .maybeSingle();
+
+  // The active rubric, plus every rubric this competition's guidebook produced.
+  // `or` rather than two round trips; RLS narrows both sides to the caller.
+  const filter = guidebook
+    ? `id.eq.${activeRubricId},guidebook_id.eq.${guidebook.id}`
+    : `id.eq.${activeRubricId}`;
+
+  const { data, error } = await supabase
+    .from("rubrics")
+    .select("id, name, stage, source, schema_json")
+    .or(filter);
+
+  if (error) throw new Error(`failed to load rubrics: ${error.message}`);
+
+  const details: RubricDetail[] = [];
+  for (const row of data ?? []) {
+    // Parsed leniently: a rubric that no longer satisfies the contract should not
+    // take down the whole competition page. It simply does not appear.
+    const parsed = rubricSchema.safeParse(row.schema_json);
+    if (!parsed.success) continue;
+
+    const stage = rubricStageSchema.safeParse(row.stage);
+    details.push({
+      id: row.id,
+      name: row.name,
+      stage: stage.success ? stage.data : "other",
+      isDefault: row.source === "default",
+      isActive: row.id === activeRubricId,
+      rubric: parsed.data,
+    });
+  }
+
+  // Proposal stage first — it is the one that scores uploads.
+  const order: Record<string, number> = { proposal: 0, presentation: 1, prototype: 2, other: 3 };
+  return details.sort((a, b) => (order[a.stage] ?? 9) - (order[b.stage] ?? 9));
 }
