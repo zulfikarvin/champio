@@ -5,9 +5,14 @@ name: Sweep stuck evaluations
 # runs as often as we need, so the schedule lives here and the logic stays in the
 # app (see src/app/api/cron/sweep/route.ts).
 #
-# Required repository secrets:
+# Optional repository secrets — Settings → Secrets and variables → Actions:
 #   SWEEP_URL     https://<your-deployment>/api/cron/sweep
-#   CRON_SECRET   same value as the CRON_SECRET env var on Vercel
+#   CRON_SECRET   the same value as the CRON_SECRET env var on Vercel
+#
+# Until both are set the job skips with a notice instead of failing. A scheduled
+# workflow that errors every ten minutes because it was never configured is pure
+# noise — it emails on every run and teaches you to ignore the alerts that matter.
+# Once configured, a genuine failure does fail loudly, which is the point.
 
 on:
   schedule:
@@ -16,19 +21,66 @@ on:
     - cron: "*/10 * * * *"
   workflow_dispatch:
 
+# One sweep at a time. Overlapping runs are harmless — runEvaluation() returns
+# early on a row that has since reached a terminal state — but they would burn
+# Gemini calls re-driving the same jobs.
+concurrency:
+  group: sweep-stuck-evaluations
+  cancel-in-progress: false
+
 jobs:
   sweep:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Call sweep endpoint
+      - name: Check configuration
+        id: config
+        env:
+          SWEEP_URL: ${{ secrets.SWEEP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          response=$(curl -sS -w "\n%{http_code}" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.SWEEP_URL }}")
-          body=$(echo "$response" | head -n -1)
-          code=$(echo "$response" | tail -n 1)
-          echo "$body"
-          if [ "$code" != "200" ]; then
-            echo "Sweep failed with HTTP $code"
+          if [ -z "$SWEEP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Sweeper not configured. Set the SWEEP_URL and CRON_SECRET repository secrets once the app is deployed. Skipping."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Call sweep endpoint
+        if: steps.config.outputs.configured == 'true'
+        # Passed through env rather than interpolated into the script body.
+        # `${{ secrets.X }}` is substituted as literal text before bash sees it,
+        # so a value containing quotes or a newline would rewrite the command.
+        env:
+          SWEEP_URL: ${{ secrets.SWEEP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          # The default shell is `bash -e`, so a non-zero curl would abort before
+          # the status could be inspected. Handle it deliberately instead.
+          set +e
+          http_code=$(curl -sS -o response.txt -w '%{http_code}' \
+            --max-time 90 \
+            --retry 2 --retry-connrefused \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${SWEEP_URL}")
+          curl_status=$?
+          set -e
+
+          if [ "$curl_status" -ne 0 ]; then
+            echo "::error::Could not reach the sweep endpoint (curl exit ${curl_status}). Is the deployment up and is SWEEP_URL correct?"
+            exit 1
+          fi
+
+          echo "HTTP ${http_code}"
+          cat response.txt || true
+          echo
+
+          if [ "$http_code" = "401" ]; then
+            echo "::error::Rejected by the endpoint. CRON_SECRET here does not match the one set on Vercel."
+            exit 1
+          fi
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Sweep failed with HTTP ${http_code}."
             exit 1
           fi

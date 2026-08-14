@@ -100,6 +100,23 @@ than shipping a bundle with `undefined` baked in.
 Migrations are not run by the deploy. Apply `supabase/migrations/*.sql` to the
 hosted project first, in order.
 
+### The sweeper
+
+[`.github/workflows/sweep.yml`](.github/workflows/sweep.yml) re-drives evaluations
+stranded by a killed function (ADR 8). It needs two **repository** secrets, under
+Settings → Secrets and variables → Actions:
+
+| Secret | Value |
+|---|---|
+| `SWEEP_URL` | `https://<your-deployment>/api/cron/sweep` |
+| `CRON_SECRET` | the same value as the `CRON_SECRET` env var on Vercel |
+
+Until both exist the scheduled job skips with a notice rather than failing. That
+is deliberate: a workflow erroring every ten minutes because it was never
+configured emails on every run and trains you to ignore the alerts that matter.
+Once configured, a real failure does fail — and says whether it could not reach
+the endpoint or was rejected by it.
+
 ## Architecture decisions
 
 ### ADR 1 — Rubrics are data, not code
