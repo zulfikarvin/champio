@@ -1,15 +1,15 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Upload } from "lucide-react";
+import { FileUp } from "lucide-react";
 import { toast } from "sonner";
 import { recordVersionAction } from "@/app/(app)/proposals/actions";
-import { Button } from "@/components/ui/button";
+import { FileDropzone } from "@/components/ui/file-dropzone";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 
 /**
- * Uploads a new version.
+ * Uploads a new version — drag a PDF onto the zone, or click to browse.
  *
  * The file goes browser → Supabase Storage directly, never through the Next
  * server: that keeps us clear of the request body limit on Vercel (a 25MB deck
@@ -18,6 +18,9 @@ import { createBrowserSupabase } from "@/lib/supabase/browser";
  *
  * The version id is minted here so the storage key and the database row agree,
  * which is what lets us clean up the orphaned object if the insert fails.
+ *
+ * File validation lives in FileDropzone; everything below assumes a PDF within
+ * the size limit has already arrived.
  */
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -30,22 +33,10 @@ export function UploadVersion({
   teamId: string;
 }) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [, startTransition] = useTransition();
 
   async function handleFile(file: File) {
-    if (file.type !== "application/pdf") {
-      toast.error("PDF only for now. PPTX support lands in the next phase.");
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      toast.error(
-        `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is 25MB.`,
-      );
-      return;
-    }
-
     setUploading(true);
     const supabase = createBrowserSupabase();
     const versionId = crypto.randomUUID();
@@ -84,31 +75,21 @@ export function UploadVersion({
       );
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
   return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/pdf,.pdf"
-        className="sr-only"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void handleFile(file);
-        }}
-      />
-      <Button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-        className="w-full sm:w-auto"
-      >
-        <Upload />
-        {uploading ? "Uploading…" : "Upload new version"}
-      </Button>
-    </>
+    <FileDropzone
+      accept="application/pdf"
+      extensions={[".pdf"]}
+      maxBytes={MAX_BYTES}
+      onFile={handleFile}
+      busy={uploading}
+      busyLabel="Uploading…"
+      label="Drop your draft here"
+      hint="PDF, up to 25MB — or click to browse"
+      wrongTypeMessage="PDF only for now. PPTX support lands in the next phase."
+      icon={<FileUp className="size-5" />}
+    />
   );
 }

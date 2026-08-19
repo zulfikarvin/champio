@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertCircle, ArrowLeft, ArrowRight, FileText } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
 import { EvaluationProgress } from "@/app/(app)/proposals/[id]/evaluation-progress";
 import { GuidebookPanel } from "@/app/(app)/proposals/[id]/guidebook/guidebook-panel";
 import { RetryButton } from "@/app/(app)/proposals/[id]/retry-button";
@@ -81,35 +81,29 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
       <section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-primary">Versions</h2>
-          <div className="flex flex-wrap items-center gap-3">
-            {evaluatedCount >= 2 ? (
-              <Link
-                href={`/proposals/${proposal.id}/delta`}
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline"
-              >
-                Compare versions
-                <ArrowRight className="size-4" />
-              </Link>
-            ) : null}
-            <UploadVersion proposalId={proposal.id} teamId={proposal.teamId} />
-          </div>
+          {evaluatedCount >= 2 ? (
+            <Link
+              href={`/proposals/${proposal.id}/delta`}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline"
+            >
+              Compare versions
+              <ArrowRight className="size-4" />
+            </Link>
+          ) : null}
+        </div>
+
+        <div className="mb-6">
+          <UploadVersion proposalId={proposal.id} teamId={proposal.teamId} />
         </div>
 
         {proposal.versions.length === 0 ? (
-          <div className="card flex flex-col items-start gap-3 p-8">
-            <span className="inline-flex size-12 items-center justify-center rounded-[16px] bg-violet-100">
-              <FileText className="size-6 text-accent" />
-            </span>
-            <h3 className="text-lg font-bold text-primary">No versions yet</h3>
-            <p className="max-w-md text-sm text-ink-muted">
-              Upload your draft as a PDF. We&rsquo;ll read it page by page and
-              score it against{" "}
-              <span className="font-semibold text-secondary">
-                {proposal.rubricName}
-              </span>{" "}
-              — usually under a minute.
-            </p>
-          </div>
+          <p className="text-sm leading-relaxed text-ink-muted">
+            Your first draft will be read page by page and scored against{" "}
+            <span className="font-semibold text-secondary">
+              {proposal.rubricName}
+            </span>{" "}
+            — usually under a minute.
+          </p>
         ) : (
           <ol className="flex flex-col gap-3">
             {proposal.versions.map((version) => {
