@@ -16,6 +16,10 @@ import { computeCostUsd, type GeminiModel } from "@/lib/ai/pricing";
  * we give up with the error preserved. A model that cannot produce the shape
  * twice will not produce it on the fifth attempt either, and each attempt costs
  * real money.
+ *
+ * Calls are made as reproducible as the API allows — temperature 0 and a fixed
+ * seed — because this app compares scores across versions, and a score that
+ * drifts on its own is worse than no score at all.
  */
 
 export type Usage = {
@@ -41,6 +45,12 @@ export class LlmError extends Error {
     this.usage = usage;
   }
 }
+
+/**
+ * One fixed seed for every call, so a repeated evaluation lands on the same
+ * sample. The value is arbitrary; that it never changes is the point.
+ */
+const DETERMINISTIC_SEED = 7;
 
 const EMPTY_USAGE: Usage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
 
@@ -90,7 +100,7 @@ export async function generateJson<T>({
   systemInstruction,
   prompt,
   schema,
-  temperature = 0.2,
+  temperature = 0,
   maxOutputTokens = 16_384,
 }: {
   model: GeminiModel;
@@ -120,6 +130,17 @@ export async function generateJson<T>({
         config: {
           systemInstruction,
           temperature,
+          // Fixed seed, paired with temperature 0. Without both, the same
+          // document scored twice comes back with different numbers — a real
+          // case measured 59.5 then 72.5 on byte-identical text, with one
+          // criterion swinging 4 to 7. A score that moves on its own makes the
+          // v1-to-v2 comparison meaningless, which is the product's core claim.
+          //
+          // This reduces variance rather than abolishing it: providers do not
+          // guarantee reproducibility, and thinking models are the least
+          // predictable of all. The hard guarantee for unchanged documents is in
+          // the pipeline, which reuses the previous result instead of re-scoring.
+          seed: DETERMINISTIC_SEED,
           maxOutputTokens,
           responseMimeType: "application/json",
         },

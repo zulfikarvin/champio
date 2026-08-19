@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { generateJson, LlmError, type Usage } from "@/lib/ai/gemini";
 import { EVALUATION_MODEL } from "@/lib/ai/pricing";
 import {
@@ -36,6 +38,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * because it is invoked from `after()` where nothing is listening for an
  * exception — an unhandled throw there is a job that hangs in `evaluating`
  * forever with no explanation.
+ *
+ * Unchanged documents are not re-scored. Uploading the same PDF twice used to
+ * produce two different numbers — 59.5 and 72.5 were measured on byte-identical
+ * text — because language models sample. Temperature 0 and a fixed seed narrow
+ * that, but only reusing the previous result makes "same document, same score" a
+ * guarantee rather than a probability.
  */
 
 const EXTRACTED_TEXT_LIMIT = 600_000; // ~150k tokens, well inside the context window
@@ -91,7 +99,9 @@ export async function runEvaluation(evaluationId: string): Promise<void> {
     // ---------------------------------------------------------------- inputs
     const { data: version, error: versionError } = await admin
       .from("proposal_versions")
-      .select("id, proposal_id, file_path, file_type, extracted_text, extracted_meta")
+      .select(
+        "id, proposal_id, file_path, file_type, extracted_text, extracted_meta, content_hash",
+      )
       .eq("id", evaluation.proposal_version_id)
       .single();
 
@@ -126,6 +136,7 @@ export async function runEvaluation(evaluationId: string): Promise<void> {
     // and re-parse a document we have already read correctly.
     let documentText = version.extracted_text ?? "";
     let meta = version.extracted_meta as unknown as ExtractedMeta | null;
+    let extracted = false;
 
     if (!documentText || !meta?.page_count) {
       if (version.file_type !== "pdf") {
@@ -155,13 +166,89 @@ export async function runEvaluation(evaluationId: string): Promise<void> {
         return;
       }
 
+      extracted = true;
+    }
+
+    // ------------------------------------------------------- reuse, if unchanged
+    // Narrow on purpose: the text AND the rubric must both match. A different
+    // rubric asks a different question and has to be answered again.
+    const contentHash = createHash("sha256").update(documentText).digest("hex");
+
+    // Two ways to arrive here with a stale row: we just extracted, or the text
+    // was already stored by a run that predates the hash column — in which case
+    // extraction is skipped and the hash would stay null forever, so the version
+    // could never match a twin. Both are fixed by the same write.
+    if (extracted) {
       await admin
         .from("proposal_versions")
         .update({
           extracted_text: documentText,
           extracted_meta: toJson(meta),
+          content_hash: contentHash,
         })
         .eq("id", version.id);
+    } else if (version.content_hash !== contentHash) {
+      await admin
+        .from("proposal_versions")
+        .update({ content_hash: contentHash })
+        .eq("id", version.id);
+    }
+
+    const { data: twins } = await admin
+      .from("proposal_versions")
+      .select("id")
+      .eq("proposal_id", version.proposal_id)
+      .eq("content_hash", contentHash)
+      .neq("id", version.id);
+
+    const twinIds = (twins ?? []).map((t) => t.id);
+
+    if (twinIds.length > 0) {
+      const { data: previous } = await admin
+        .from("evaluations")
+        .select("id, overall_score, result_json, prompt_version, model")
+        .in("proposal_version_id", twinIds)
+        .eq("rubric_id", evaluation.rubric_id)
+        .eq("status", "complete")
+        .is("reused_from_evaluation_id", null)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (previous?.result_json) {
+        await admin
+          .from("evaluations")
+          .update({
+            status: "complete",
+            completed_at: new Date().toISOString(),
+            overall_score: previous.overall_score,
+            result_json: previous.result_json,
+            prompt_version: previous.prompt_version,
+            model: previous.model,
+            reused_from_evaluation_id: previous.id,
+            // No call was made, so no tokens were spent. Recording anything else
+            // here would inflate the cost reporting on the admin dashboard.
+            token_input: 0,
+            token_output: 0,
+            cost_usd: 0,
+            error: null,
+          })
+          .eq("id", evaluationId);
+
+        await logEvent({
+          name: "evaluation_completed",
+          teamId: evaluation.team_id,
+          properties: {
+            evaluation_id: evaluationId,
+            proposal_id: version.proposal_id,
+            overall_score: Number(previous.overall_score ?? 0),
+            cost_usd: 0,
+            reused_from: previous.id,
+          },
+        });
+
+        return;
+      }
     }
 
     // ------------------------------------------------------------ evaluation

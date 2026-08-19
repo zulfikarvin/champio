@@ -133,6 +133,9 @@ export async function recordVersionAction(input: {
       version_number: versionNumber,
       file_path: parsed.data.filePath,
       file_type: "pdf",
+      // The file name was previously accepted and dropped. It is the best default
+      // name a version can have, and the user can rename it afterwards.
+      label: parsed.data.fileName?.trim().slice(0, 120) || null,
       created_by: user.id,
     })
     .select("id")
@@ -165,6 +168,7 @@ export async function recordVersionAction(input: {
     proposalId: proposal.id,
     teamId: proposal.team_id,
     rubricId: proposal.rubric_id,
+    userId: user.id,
   });
 
   revalidatePath(`/proposals/${proposal.id}`);
@@ -213,6 +217,7 @@ export async function reevaluateAction(versionId: string): Promise<EnqueueState>
     proposalId: version.proposal_id,
     teamId: version.team_id,
     rubricId,
+    userId: user.id,
   });
 
   revalidatePath(`/proposals/${version.proposal_id}`);
@@ -235,4 +240,166 @@ export async function reevaluateAction(versionId: string): Promise<EnqueueState>
   });
 
   return { status: "queued", evaluationId: outcome.evaluationId };
+}
+
+// ---------------------------------------------------------------------------
+// Editing: rename a competition, name a version, remove a version.
+// ---------------------------------------------------------------------------
+
+export type EditState = { status: "ok" } | { status: "error"; message: string };
+
+const renameProposalSchema = z.object({
+  proposalId: z.string().uuid(),
+  title: z.string().trim().min(3, "Give the competition a name.").max(200),
+});
+
+/** Renames a competition. RLS (`is_team_member`) is what authorises this. */
+export async function renameProposalAction(input: {
+  proposalId: string;
+  title: string;
+}): Promise<EditState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You must be signed in." };
+
+  const parsed = renameProposalSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Check the name.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("proposals")
+    .update({ title: parsed.data.title })
+    .eq("id", parsed.data.proposalId)
+    .select("id")
+    .maybeSingle();
+
+  // No row came back: either it does not exist or it is not this user's team.
+  // RLS filtered it either way, and the client learns nothing from the difference.
+  if (error || !data) {
+    return { status: "error", message: "Could not rename this competition." };
+  }
+
+  revalidatePath(`/proposals/${parsed.data.proposalId}`);
+  revalidatePath("/proposals");
+  return { status: "ok" };
+}
+
+const renameVersionSchema = z.object({
+  versionId: z.string().uuid(),
+  /** Empty clears the label, and the version falls back to showing "v{n}". */
+  label: z.string().trim().max(120, "Keep it under 120 characters."),
+});
+
+/**
+ * Names a version.
+ *
+ * `label` is the only column a client may write here — a database trigger rejects
+ * a change to any other, because a version is the immutable snapshot a score was
+ * computed against.
+ */
+export async function renameVersionAction(input: {
+  versionId: string;
+  label: string;
+}): Promise<EditState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You must be signed in." };
+
+  const parsed = renameVersionSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Check the name.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("proposal_versions")
+    .update({ label: parsed.data.label === "" ? null : parsed.data.label })
+    .eq("id", parsed.data.versionId)
+    .select("id, proposal_id")
+    .maybeSingle();
+
+  if (error || !data) {
+    return { status: "error", message: "Could not rename this version." };
+  }
+
+  revalidatePath(`/proposals/${data.proposal_id}`);
+  return { status: "ok" };
+}
+
+/**
+ * Deletes a version, its evaluations and its uploaded file.
+ *
+ * Only a team owner can do this — it is the one destructive action on the page,
+ * and the DELETE policy has said so since 0002.
+ *
+ * Order matters: the row goes first, through the user-scoped client so RLS is the
+ * thing that authorises it. Only once that succeeds is the storage object removed,
+ * so a permission failure cannot destroy a file while leaving the row behind.
+ * Evaluations disappear with it via ON DELETE CASCADE.
+ */
+export async function deleteVersionAction(versionId: string): Promise<EditState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You must be signed in." };
+
+  const supabase = await createClient();
+
+  const { data: version, error: loadError } = await supabase
+    .from("proposal_versions")
+    .select("id, proposal_id, team_id, file_path, version_number")
+    .eq("id", versionId)
+    .maybeSingle();
+
+  if (loadError || !version) {
+    return { status: "error", message: "Version not found." };
+  }
+
+  const { data: deleted, error: deleteError } = await supabase
+    .from("proposal_versions")
+    .delete()
+    .eq("id", versionId)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError || !deleted) {
+    // The DELETE policy is is_team_owner, so this is the ordinary "member, not
+    // owner" case rather than an unexpected failure.
+    return {
+      status: "error",
+      message: "Only a team owner can delete a version.",
+    };
+  }
+
+  // Best effort: the row is already gone, and a leftover object is a quota
+  // nuisance rather than a correctness problem. Don't fail the action for it.
+  const { error: storageError } = await supabase.storage
+    .from("proposals")
+    .remove([version.file_path]);
+
+  if (storageError) {
+    console.error(
+      `[proposals] version ${versionId} row deleted but file remains:`,
+      storageError.message,
+    );
+  }
+
+  await logEvent({
+    name: "version_deleted",
+    userId: user.id,
+    teamId: version.team_id,
+    properties: {
+      proposal_id: version.proposal_id,
+      version_id: versionId,
+      version_number: version.version_number,
+    },
+  });
+
+  revalidatePath(`/proposals/${version.proposal_id}`);
+  revalidatePath("/proposals");
+  return { status: "ok" };
 }

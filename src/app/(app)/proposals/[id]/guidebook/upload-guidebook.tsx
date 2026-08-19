@@ -1,20 +1,24 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Upload } from "lucide-react";
+import { ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import { attachGuidebookAction } from "@/app/(app)/proposals/guidebook-actions";
-import { Button } from "@/components/ui/button";
+import { FileDropzone } from "@/components/ui/file-dropzone";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 
 /**
- * Uploads this competition's guidebook.
+ * Uploads this competition's guidebook — drag a PDF onto the zone, or click to
+ * browse.
  *
- * Same pattern as the proposal upload: browser → Supabase Storage directly, so a
+ * Same pattern as the version upload: browser → Supabase Storage directly, so a
  * large PDF never has to fit inside a serverless request body, and the bucket's
  * team-prefix policy is what authorises the write. The server action afterwards
  * records metadata and queues compilation.
+ *
+ * File validation lives in FileDropzone; everything below assumes a PDF within
+ * the size limit has already arrived.
  */
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -27,22 +31,10 @@ export function UploadGuidebook({
   teamId: string;
 }) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [, startTransition] = useTransition();
 
   async function handleFile(file: File) {
-    if (file.type !== "application/pdf") {
-      toast.error("Guidebooks must be PDF.");
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      toast.error(
-        `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is 25MB.`,
-      );
-      return;
-    }
-
     setUploading(true);
     const supabase = createBrowserSupabase();
     const guidebookId = crypto.randomUUID();
@@ -81,30 +73,21 @@ export function UploadGuidebook({
       );
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
   return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/pdf,.pdf"
-        className="sr-only"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void handleFile(file);
-        }}
-      />
-      <Button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-      >
-        <Upload />
-        {uploading ? "Uploading…" : "Upload guidebook"}
-      </Button>
-    </>
+    <FileDropzone
+      accept="application/pdf"
+      extensions={[".pdf"]}
+      maxBytes={MAX_BYTES}
+      onFile={handleFile}
+      busy={uploading}
+      busyLabel="Uploading…"
+      label="Drop the guidebook here"
+      hint="PDF, up to 25MB — or click to browse"
+      wrongTypeMessage="Guidebooks must be PDF."
+      icon={<ScrollText className="size-5" />}
+    />
   );
 }

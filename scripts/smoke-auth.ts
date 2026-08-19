@@ -181,6 +181,14 @@ async function main() {
         "delta link appears with 2 evaluated versions",
         detailBody.includes("Compare versions"),
       );
+      // Drag-and-drop degrades to a real <button> + file input, so both routes
+      // must be present — a zone that only accepts drops excludes keyboard users.
+      check(
+        "version upload is a drop zone with a keyboard fallback",
+        detailBody.includes("Drop your draft here") &&
+          detailBody.includes("border-dashed") &&
+          detailBody.includes('type="file"'),
+      );
 
       const reportId = detailBody.match(/\/evaluations\/([0-9a-f-]{36})/)?.[1];
       if (!reportId) {

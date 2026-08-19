@@ -34,6 +34,7 @@ export type Database = {
           full_name: string | null;
           university: string | null;
           is_admin: boolean;
+          evaluation_limit_exempt: boolean;
           created_at: string;
         };
         Insert: {
@@ -42,6 +43,7 @@ export type Database = {
           full_name?: string | null;
           university?: string | null;
           is_admin?: boolean;
+          evaluation_limit_exempt?: boolean;
           created_at?: string;
         };
         Update: {
@@ -50,6 +52,7 @@ export type Database = {
           full_name?: string | null;
           university?: string | null;
           is_admin?: boolean;
+          evaluation_limit_exempt?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -520,6 +523,10 @@ export type Database = {
           file_type: Database["public"]["Enums"]["submission_file_type"];
           extracted_text: string | null;
           extracted_meta: Json;
+          /** SHA-256 of extracted_text (migration 0012). */
+          content_hash: string | null;
+          /** Human name for the version; null renders as "v{n}" (migration 0014). */
+          label: string | null;
           created_by: string | null;
           created_at: string;
         };
@@ -537,6 +544,8 @@ export type Database = {
           file_type: Database["public"]["Enums"]["submission_file_type"];
           extracted_text?: string | null;
           extracted_meta?: Json;
+          content_hash?: string | null;
+          label?: string | null;
           created_by?: string | null;
           created_at?: string;
         };
@@ -549,6 +558,8 @@ export type Database = {
           file_type?: Database["public"]["Enums"]["submission_file_type"];
           extracted_text?: string | null;
           extracted_meta?: Json;
+          content_hash?: string | null;
+          label?: string | null;
           created_by?: string | null;
           created_at?: string;
         };
@@ -594,6 +605,8 @@ export type Database = {
           prompt_version: string | null;
           /** Pinned model id that produced this result (migration 0005). */
           model: string | null;
+          /** Set when this score was copied from an earlier evaluation (0012). */
+          reused_from_evaluation_id: string | null;
           attempt_count: number;
           created_at: string;
         };
@@ -613,6 +626,7 @@ export type Database = {
           error?: string | null;
           prompt_version?: string | null;
           model?: string | null;
+          reused_from_evaluation_id?: string | null;
           attempt_count?: number;
           created_at?: string;
         };
@@ -632,6 +646,7 @@ export type Database = {
           error?: string | null;
           prompt_version?: string | null;
           model?: string | null;
+          reused_from_evaluation_id?: string | null;
           attempt_count?: number;
           created_at?: string;
         };

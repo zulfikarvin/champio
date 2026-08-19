@@ -73,6 +73,8 @@ export async function listProposals(): Promise<ProposalSummary[]> {
 export type VersionWithEvaluation = {
   id: string;
   versionNumber: number;
+  /** User-given name; null means show "v{versionNumber}". */
+  label: string | null;
   filePath: string;
   fileType: SubmissionFileType;
   createdAt: string;
@@ -82,6 +84,8 @@ export type VersionWithEvaluation = {
     overallScore: number | null;
     error: string | null;
     createdAt: string;
+    /** True when this score was copied because the document had not changed. */
+    reused: boolean;
   } | null;
 };
 
@@ -124,8 +128,8 @@ export async function getProposal(id: string): Promise<ProposalDetail | null> {
        tracks(name),
        rubrics(name, source),
        proposal_versions(
-         id, version_number, file_path, file_type, created_at,
-         evaluations(id, status, overall_score, error, created_at, rubric_id, rubrics(name, source))
+         id, version_number, label, file_path, file_type, created_at,
+         evaluations(id, status, overall_score, error, created_at, rubric_id, reused_from_evaluation_id, rubrics(name, source))
        )`,
     )
     .eq("id", id)
@@ -144,6 +148,7 @@ export async function getProposal(id: string): Promise<ProposalDetail | null> {
       return {
         id: version.id,
         versionNumber: version.version_number,
+        label: version.label,
         filePath: version.file_path,
         fileType: version.file_type,
         createdAt: version.created_at,
@@ -155,6 +160,7 @@ export async function getProposal(id: string): Promise<ProposalDetail | null> {
                 latest.overall_score === null ? null : Number(latest.overall_score),
               error: latest.error,
               createdAt: latest.created_at,
+              reused: latest.reused_from_evaluation_id !== null,
             }
           : null,
       };

@@ -438,6 +438,20 @@ async function main() {
         "trigger should raise",
       );
     }
+    {
+      // An account that could exempt itself from the evaluation cap could spend
+      // unlimited Gemini credit, so this column is guarded exactly like is_admin.
+      const exempt = await a.client
+        .from("profiles")
+        .update({ evaluation_limit_exempt: true })
+        .eq("id", a.userId)
+        .select("id");
+      check(
+        "A cannot exempt itself from the evaluation limit",
+        Boolean(exempt.error),
+        "trigger should raise",
+      );
+    }
 
     console.log("\nServer-owned columns reject client writes");
     {
