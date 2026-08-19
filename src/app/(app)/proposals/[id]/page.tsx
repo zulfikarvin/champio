@@ -9,6 +9,10 @@ import { UploadVersion } from "@/app/(app)/proposals/[id]/upload-version";
 import { ScoreBadge } from "@/components/report/score-badge";
 import { EVALUATIONS_PER_PROPOSAL_PER_DAY } from "@/lib/env";
 import { getProposalGuidebook } from "@/lib/guidebooks";
+import { isEvaluationLimitExempt } from "@/lib/limits";
+import { getActiveTeam } from "@/lib/teams";
+import { RenameProposal } from "@/app/(app)/proposals/[id]/rename-proposal";
+import { VersionActions } from "@/app/(app)/proposals/[id]/version-actions";
 import {
   getProposal,
   listProposalRubrics,
@@ -35,11 +39,17 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
   // way, and the client learns nothing extra from the distinction.
   if (!proposal) notFound();
 
-  const [guidebook, rubricChoices, rubricDetails] = await Promise.all([
-    getProposalGuidebook(proposal.id),
-    listRubricChoices(proposal.trackId),
-    listProposalRubrics(proposal.id, proposal.rubricId),
-  ]);
+  const [guidebook, rubricChoices, rubricDetails, limitExempt, team] =
+    await Promise.all([
+      getProposalGuidebook(proposal.id),
+      listRubricChoices(proposal.trackId),
+      listProposalRubrics(proposal.id, proposal.rubricId),
+      isEvaluationLimitExempt(),
+      getActiveTeam(),
+    ]);
+
+  // Mirrors the DELETE policy on proposal_versions, which is is_team_owner.
+  const canDeleteVersions = team?.role === "owner";
 
   const evaluatedCount = proposal.versions.filter(
     (v) => v.evaluation?.status === "complete",
@@ -56,7 +66,7 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
       </Link>
 
       <header className="mb-8">
-        <h1 className="display-lg text-primary">{proposal.title}</h1>
+        <RenameProposal proposalId={proposal.id} title={proposal.title} />
         <p className="mt-2 text-sm text-ink-muted">
           {proposal.trackName} · {proposal.versions.length} version
           {proposal.versions.length === 1 ? "" : "s"}
@@ -117,6 +127,11 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
                     <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-white">
                       v{version.versionNumber}
                     </span>
+                    {version.label ? (
+                      <span className="min-w-0 truncate text-sm font-semibold text-primary">
+                        {version.label}
+                      </span>
+                    ) : null}
                     <span className="text-xs text-ink-muted">
                       {new Date(version.createdAt).toLocaleDateString(undefined, {
                         day: "numeric",
@@ -132,7 +147,21 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
                           initialStatus={evaluation.status}
                         />
                       ) : null}
+                      {isDone && evaluation.reused ? (
+                        <span
+                          title="This document was identical to an earlier version, so the earlier score was kept rather than the model being asked again."
+                          className="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-secondary"
+                        >
+                          Unchanged
+                        </span>
+                      ) : null}
                       {isDone ? <ScoreBadge score={evaluation.overallScore} /> : null}
+                      <VersionActions
+                        versionId={version.id}
+                        versionNumber={version.versionNumber}
+                        label={version.label}
+                        canDelete={canDeleteVersions}
+                      />
                     </div>
                   </div>
 
@@ -170,8 +199,9 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
         )}
 
         <p className="mt-8 text-xs text-ink-muted">
-          Limit: {EVALUATIONS_PER_PROPOSAL_PER_DAY} evaluations per competition per
-          24 hours.
+          {limitExempt
+            ? "No evaluation limit on this account."
+            : `Limit: ${EVALUATIONS_PER_PROPOSAL_PER_DAY} evaluations per competition per 24 hours.`}
         </p>
       </section>
     </div>

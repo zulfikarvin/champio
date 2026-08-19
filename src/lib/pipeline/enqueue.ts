@@ -1,6 +1,7 @@
 import "server-only";
 
 import { EVALUATIONS_PER_PROPOSAL_PER_DAY } from "@/lib/env";
+import { isUserExemptFromLimit } from "@/lib/limits";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -10,6 +11,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * no client INSERT policy — which is precisely what makes the rate limit
  * enforceable rather than advisory. A limit checked in a component is a
  * suggestion; a limit checked in the single write path is a limit.
+ *
+ * The same property is what makes the exemption safe: it is read here, server
+ * side, from a column no client can write.
  */
 
 export type EnqueueOutcome =
@@ -23,11 +27,14 @@ export async function enqueueEvaluation({
   proposalId,
   teamId,
   rubricId,
+  userId,
 }: {
   proposalVersionId: string;
   proposalId: string;
   teamId: string;
   rubricId: string;
+  /** Whose quota this run counts against. Exempt accounts skip the cap entirely. */
+  userId: string;
 }): Promise<EnqueueOutcome> {
   const admin = createAdminClient();
 
@@ -43,6 +50,13 @@ export async function enqueueEvaluation({
 
   if (inFlight) {
     return { ok: false, reason: "in_flight", evaluationId: inFlight.id };
+  }
+
+  // The in-flight check above still applies to exempt accounts: it stops a
+  // double-click costing two Gemini calls, which is a correctness guard rather
+  // than a quota.
+  if (await isUserExemptFromLimit(userId)) {
+    return insertQueued({ proposalVersionId, teamId, rubricId });
   }
 
   // Rate limit is per proposal, not per version — otherwise uploading a new
@@ -80,6 +94,20 @@ export async function enqueueEvaluation({
       used,
     };
   }
+
+  return insertQueued({ proposalVersionId, teamId, rubricId });
+}
+
+async function insertQueued({
+  proposalVersionId,
+  teamId,
+  rubricId,
+}: {
+  proposalVersionId: string;
+  teamId: string;
+  rubricId: string;
+}): Promise<EnqueueOutcome> {
+  const admin = createAdminClient();
 
   const { data: created, error: insertError } = await admin
     .from("evaluations")

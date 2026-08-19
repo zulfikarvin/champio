@@ -21,6 +21,7 @@ export const EVENT_NAMES = [
   "quiz_passed",
   "proposal_created",
   "version_uploaded",
+  "version_deleted",
   "evaluation_completed",
   "guidebook_compiled",
   "delta_viewed",
